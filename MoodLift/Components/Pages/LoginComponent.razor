@@ -1,0 +1,13 @@
+﻿@page "/login"
+<h3>LoginComponent</h3>
+
+<form action="/authentication/google-signin" method="post">
+    <AntiforgeryToken />
+    <input type="text" name="returnUrl" value="@ReturnUrl" hidden />
+    <button class="btn btn-primary" type="submit">Signin with Google</button>
+</form>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string ReturnUrl { get; set; } = "/";
+}
