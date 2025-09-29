@@ -52,6 +52,9 @@
     background: var(--panel);
     padding: 1.5rem;
     flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 /* Footer */
@@ -64,7 +67,3 @@
     justify-content: center;
 }
 
-.ml-header,
-.ml-footer {
-    flex-shrink: 0; 
-}
