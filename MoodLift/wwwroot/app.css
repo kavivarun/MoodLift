@@ -1,5 +1,21 @@
+:root {
+    --brand: #6b66f0; 
+    --panel: #ffffff; 
+    --tile: #7b74f8; 
+    --tile-hover: #6a63ef;
+    --text-on: #ffffff;
+    --ring: #b7b3ff;
+    --frame: #1f1f1f; 
+}
+
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    height: 100%;
+}
+
+body {
+    background: var(--frame);
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
 a, .btn-link {

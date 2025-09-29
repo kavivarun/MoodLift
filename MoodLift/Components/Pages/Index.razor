@@ -1,0 +1,22 @@
+﻿@page "/"
+@attribute [Authorize]
+
+<h1 class="sr-only">MoodLift Dashboard</h1>
+
+<div class="ml-grid">
+    <NavLink href="/form" class="tile tile--form">
+        <span>Fill Form</span>
+    </NavLink>
+
+    <NavLink href="/tips" class="tile tile--tips">
+        <span>Mood Tips</span>
+    </NavLink>
+
+    <NavLink href="/analytics" class="tile tile--analytics">
+        <span>View Analytics</span>
+    </NavLink>
+
+    <NavLink href="/music" class="tile tile--music">
+        <span>Listen to Music</span>
+    </NavLink>
+</div>
