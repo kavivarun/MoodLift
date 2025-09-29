@@ -1,7 +1,8 @@
 ﻿@page "/"
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
-
+@attribute [Authorize]
 <AuthorizeView>
     <NotAuthorized>
         <h1>You are not authorized</h1>

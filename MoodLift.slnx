@@ -1,3 +1,6 @@
 <Solution>
+  <Project Path="MoodLift.Core/MoodLift.Core.csproj" />
+  <Project Path="MoodLift.Infrastructure/MoodLift.Infrastructure.csproj" />
+  <Project Path="MoodLift.Tests/MoodLift.Tests.csproj" />
   <Project Path="MoodLift/MoodLift.csproj" />
 </Solution>

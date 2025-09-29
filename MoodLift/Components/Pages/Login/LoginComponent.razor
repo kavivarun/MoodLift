@@ -1,0 +1,26 @@
+﻿@page "/login"
+@layout LoginLayout
+<div class="login-container">
+    <div class="login-card shadow-lg">
+        <h2 class="text-center mb-4">Welcome to MoodLift 🎵</h2>
+        <p class="text-center text-muted">Sign in to track your moods and get personalized music suggestions</p>
+
+        <form action="/authentication/google-signin" method="post" class="mt-4">
+            <AntiforgeryToken />
+            <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+            <button class="btn btn-google w-100" type="submit">
+                <i class="bi bi-google me-2"></i> Sign in with Google
+            </button>
+        </form>
+
+        <div class="mt-4 text-center small text-muted">
+            By signing in, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string ReturnUrl { get; set; } = "/";
+}
