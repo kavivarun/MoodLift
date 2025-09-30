@@ -34,30 +34,28 @@
         box-shadow: 0 10px 22px rgba(0,0,0,.22);
     }
 
-    .tile:active {
-        transform: translateY(0);
-    }
-
+        .tile:hover:active,
+        .tile:active {
+            transform: scale(0.95);
+            filter: brightness(0.9);
+            box-shadow: inset 0 4px 12px rgba(0,0,0,0.3);
+        }
     .tile:focus-visible {
         outline: 3px solid #ffffff;
         outline-offset: 3px;
     }
 
+.tile__text {
+    color: #fff;
+    font-size: inherit;
+    font-weight: inherit;
+    position: relative;
+    text-shadow: -1px -1px 0 var(--brand), 1px -1px 0 var(--brand), -1px 1px 0 var(--brand), 1px 1px 0 var(--brand); /* thin outline */
+}
+
 /* Placement */
 .tile--form {
     grid-area: form;
-}
-
-.tile--tips {
-    grid-area: tips;
-}
-
-.tile--analytics {
-    grid-area: analytics;
-}
-
-.tile--music {
-    grid-area: music;
 }
 
 /* Responsive stacking */
@@ -85,4 +83,187 @@
     clip: rect(0,0,0,0);
     white-space: nowrap;
     border: 0;
+}
+
+/* Music tile */
+
+.tile--music {
+    grid-area: music;
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    background: url('/Images/MusicBG.jpg') left center / 160% repeat;
+    transition: transform .2s ease, box-shadow .2s ease, filter .2s ease, background-position 2s ease;
+    z-index: 0;
+}
+
+    .tile--music::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to right, var(--brand) 0%, transparent 100%);
+        opacity: 1;
+        pointer-events: none;
+    }
+
+    .tile--music:hover {
+        transform: translateY(-2px) scale(1.02);
+        filter: brightness(1.1) saturate(1.2);
+        box-shadow: 0 14px 28px rgba(0,0,0,.25);
+        background-position: right center;
+    }
+
+/* Analytics tile */
+.tile--analytics {
+    grid-area: analytics;
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    background: url('/Images/AnalyticsBG.jpg') center top / 160% repeat;
+    transition: transform .2s ease, box-shadow .2s ease, filter .2s ease, background-position 2s ease;
+    z-index: 0;
+}
+
+    .tile--analytics::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, var(--brand) 0%, transparent 100%);
+        opacity: 1;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .tile--analytics > * {
+        position: relative;
+        z-index: 2; 
+        color: #fff; 
+        text-shadow: -1px -1px 0 var(--brand), 1px -1px 0 var(--brand), -1px 1px 0 var(--brand), 1px 1px 0 var(--brand); /* subtle outline */
+    }
+
+    .tile--analytics:hover {
+        transform: translateY(-2px) scale(1.02);
+        filter: brightness(1.1) saturate(1.2);
+        box-shadow: 0 14px 28px rgba(0,0,0,.25);
+        background-position: center bottom; 
+    }
+
+
+/* Mood Tips tile  */
+.tile--tips {
+    grid-area: tips;
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--brand) 0%, #fff 160%); 
+    z-index: 0;
+}
+    /* Base overlay (no animation by default) */
+    .tile--tips::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: repeating-radial-gradient( circle at 0 50%, rgba(255, 255, 255, 0.1) 0, rgba(255, 255, 255, 0.1) 2px, transparent 3px, transparent 40px );
+        background-size: 150% 100%;
+        opacity: 1;
+        pointer-events: none;
+        z-index: 1;
+        transform: translateX(0);
+        animation: waveReturn 1.5s ease-in-out 1 reverse forwards; /* default: “returned” */
+    }
+
+    /* Hover: play forward once */
+    .tile--tips:hover::before {
+        animation: waveShift 1.5s ease-in-out 1 forwards;
+    }
+
+    /* Hovered tile styling */
+    .tile--tips:hover {
+        transform: translateY(-2px) scale(1.02);
+        filter: brightness(1.2) saturate(1.3);
+        box-shadow: 0 14px 28px rgba(0,0,0,.25);
+    }
+
+/* forward animation */
+@keyframes waveShift {
+    0% {
+        background-position: 0 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* backward animation */
+@keyframes waveReturn {
+    100% {
+        background-position: 200% 0;
+    }
+
+    0% {
+        background-position: 0 0;
+    }
+}
+
+
+/* Fill Form tile */
+.tile--form {
+    grid-area: form;
+    position: relative;
+    overflow: hidden;
+    background: radial-gradient(circle at center, var(--brand) 0%, #222 120%); 
+    border-radius: 8px;
+    z-index: 0;
+    display: flex; 
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+    /* Firework burst rays */
+    .tile--form::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 200%;
+        height: 200%;
+        background: repeating-conic-gradient( from 0deg, rgba(255, 255, 255, 0.6) 0deg 2deg, transparent 2deg 10deg );
+        border-radius: 50%;
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.4);
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    /* On hover: firework burst */
+    .tile--form:hover::before {
+        animation: firework-burst 1.5s ease-out forwards;
+    }
+
+    /* Text above effect */
+    .tile--form > * {
+        position: relative;
+        z-index: 2;
+        color: #fff;
+        font-size: clamp(2rem, 4vw, 3.5rem);
+        font-weight: bold;
+        text-shadow: 0 0 6px rgba(0,0,0,0.5), -1px -1px 0 var(--brand), 1px -1px 0 var(--brand), -1px 1px 0 var(--brand), 1px 1px 0 var(--brand);
+    }
+@keyframes firework-burst {
+    0% {
+        opacity: 0.9;
+        transform: translate(-50%, -50%) scale(0.2);
+    }
+
+    70% {
+        opacity: 0.6;
+        transform: translate(-50%, -50%) scale(1.3);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(2);
+    }
 }

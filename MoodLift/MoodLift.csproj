@@ -15,4 +15,7 @@
 	  <ProjectReference Include="..\MoodLift.Core\MoodLift.Core.csproj" />
 	  <ProjectReference Include="..\MoodLift.Infrastructure\MoodLift.Infrastructure.csproj" />
 	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="wwwroot\Images\" />
+	</ItemGroup>
 </Project>
