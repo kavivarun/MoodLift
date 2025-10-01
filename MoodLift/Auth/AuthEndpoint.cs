@@ -30,9 +30,12 @@ namespace MoodLift.Auth
 
                     var email = context.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Email)!.Value;
                     var name = context.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Name)!.Value;
+                    var googleId = context.User.Claims.FirstOrDefault(x => x.Type == "sub")?.Value
+               ?? context.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier)?.Value;
                     Claim[] claims = [
                         new(ClaimTypes.Name, name),
-                        new(ClaimTypes.Email, email)
+                        new(ClaimTypes.Email, email),
+                         new(ClaimTypes.NameIdentifier, googleId)
                     ];
 
                     var identity = new ClaimsIdentity(claims, Constant.Scheme);

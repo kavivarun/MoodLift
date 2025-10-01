@@ -169,7 +169,7 @@
         pointer-events: none;
         z-index: 1;
         transform: translateX(0);
-        animation: waveReturn 1.5s ease-in-out 1 reverse forwards; /* default: “returned” */
+        animation: waveReturn 1.5s ease-in-out 1 reverse forwards; 
     }
 
     /* Hover: play forward once */

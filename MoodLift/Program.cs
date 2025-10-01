@@ -1,10 +1,26 @@
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.EntityFrameworkCore;
 using MoodLift.Auth;
 using MoodLift.Components;
+using MoodLift.Core.Interfaces;
+using MoodLift.Infrastructure.Repositories;
+using MoodLift.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// DI registrations
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, HttpContextCurrentUserService>();
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddScoped<IMoodEntryService, MoodEntryService>();
+
 // Add services to the container.
+builder.Services.AddDbContext<MoodLiftDbContext>(options =>
+    options.UseSqlite(
+        builder.Configuration.GetConnectionString("MoodLiftDb") ?? "Data Source=moodlift.db",
+        b => b.MigrationsAssembly("MoodLift.Infrastructure")
+    ));
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddCascadingAuthenticationState();

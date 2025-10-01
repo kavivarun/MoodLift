@@ -1,0 +1,415 @@
+﻿@page "/form"
+@attribute [Authorize]
+@inject NavigationManager navigation
+@inject MoodLift.Core.Interfaces.IMoodEntryService MoodService
+@using MoodLift.Core
+@using MoodLift.Core.Enum
+@using MoodLift.Core.Models
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+
+@rendermode InteractiveServer
+
+<div class="ml-page">
+    <a href="/" class="ml-home-link">← Home</a>
+    <h3 class="ml-app-title">Mood Check In</h3>
+
+    <div class="ml-form-wrap">
+        <EditForm EditContext="_editContext" OnValidSubmit="HandleSubmit" class="ml-form">
+            <DataAnnotationsValidator />
+
+            <!-- Header strip -->
+            <div class="ml-form-head">
+                <p class="ml-subtitle">Complete step by step</p>
+                <div class="ml-step-indicator">
+                    Step @_step of @_totalSteps
+                </div>
+            </div>
+
+            <!-- Question Card -->
+            <fieldset class="ml-card @( _currentInvalid ? "is-invalid" : null)">
+                <legend class="ml-question">@GetQuestionTitle(_step)</legend>
+
+                @switch (_step)
+                {
+                    case 1:
+                        <div class="ml-field ml-center-field">
+                            <label class="ml-label">Mood (0–10)</label>
+                            <input type="range"
+                                   min="0"
+                                   max="10"
+                                   class="ml-slider"
+                                   @bind="_model.MoodScore"
+                                   title="@_model.MoodScore" />
+                        </div>
+                        break;
+
+                    case 2:
+                        <div class="ml-field ml-center-field">
+                            <InputText class="ml-input ml-input--center" @bind-Value="_model.MoodWord" />
+                        </div>
+                        break;
+
+                    case 3:
+                        <div class="ml-field">
+                            <label class="ml-label">Strongest emotion</label>
+                            <InputRadioGroup @bind-Value="_model.PrimaryEmotion">
+                                <div class="ml-choices-grid">
+                                    @foreach (var emo in Enum.GetValues(typeof(PrimaryEmotion)).Cast<PrimaryEmotion>())
+                                    {
+                                        <label class="ml-choice @( _model.PrimaryEmotion == emo ? "is-selected" : null)">
+                                            <InputRadio Value="@emo" />
+                                            <span>@emo</span>
+                                        </label>
+                                    }
+                                </div>
+                            </InputRadioGroup>
+                        </div>
+                        break;
+
+                    case 4:
+                        <div class="ml-field">
+                            <label class="ml-label">Symptoms (multi-select)</label>
+                            <div class="ml-choices-grid">
+                                @foreach (var s in Enum.GetValues<SymptomFlags>())
+                                {
+                                    if (s == SymptomFlags.None) continue;
+                                    <label class="ml-choice @( _symptomSelections[s] ? "is-selected" : null)">
+                                        <input type="checkbox"
+                                               checked="@_symptomSelections[s]"
+                                               @onchange="e => ToggleSymptom(s, (bool)e.Value!)" />
+                                        <span>@s</span>
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                        break;
+
+                    case 5:
+                        <div class="ml-field ml-center-field">
+                            <InputNumber class="ml-input ml-input--big" @bind-Value="_model.SleepHours" style="
+                text-align:center;
+                font-size:clamp(2rem, 2rem + 1.2vw, 4rem);
+                font-weight:600;
+                height:80px;
+                line-height:80px;
+                border-radius:8px;
+                padding:0 1rem;
+                width:50px;
+        color:#6b66f0
+                max-width:400px;" />
+                        </div>
+                        break;
+
+                    case 6:
+                        <div class="ml-field ml-center-field">
+                            <label class="ml-label">Energy (0–10)</label>
+                            <input type="range"
+                                   min="0"
+                                   max="10"
+                                   class="ml-slider"
+                                   @bind="_model.EnergyLevel"
+                                   title="@_model.EnergyLevel" />
+                        </div>
+                        break;
+
+                    case 7:
+                        <div class="ml-field ml-center-field">
+                            <InputNumber class="ml-input ml-input--big" @bind-Value="_model.CaffeineDrinks" />
+                        </div>
+                        break;
+
+                    case 8:
+                        <div class="ml-field">
+                            <label class="ml-label">Movement today</label>
+                            <InputRadioGroup @bind-Value="_model.Movement">
+                                <div class="ml-choices-grid">
+                                    @foreach (var m in Enum.GetValues(typeof(MovementLevel)).Cast<MovementLevel>())
+                                    {
+                                        <label class="ml-choice @( _model.Movement == m ? "is-selected" : null)">
+                                            <InputRadio Value="@m" />
+                                            <span>@m</span>
+                                        </label>
+                                    }
+                                </div>
+                            </InputRadioGroup>
+                        </div>
+                        break;
+
+                    case 9:
+                        <div class="ml-field ml-center-field">
+                            <label class="ml-label">Stress (0–10)</label>
+                            <input type="range"
+                                   min="0"
+                                   max="10"
+                                   class="ml-slider"
+                                   @bind="_model.StressScore"
+                                   title="@_model.StressScore" />
+                        </div>
+                        break;
+
+                    case 10:
+                        <div class="ml-field ml-center-field">
+                            <label class="ml-label">Main cause of stress (optional)</label>
+                            <InputText class="ml-input ml-input--center" @bind-Value="_model.StressCause" />
+                        </div>
+                        break;
+
+                    case 11:
+                        <div class="ml-field">
+                            <label class="ml-label">Coping strategies (multi-select)</label>
+                            <div class="ml-choices-grid">
+                                @foreach (var c in Enum.GetValues<CopingStrategyFlags>())
+                                {
+                                    if (c == CopingStrategyFlags.None) continue;
+                                    <label class="ml-choice @( _copingSelections[c] ? "is-selected" : null)">
+                                        <input type="checkbox"
+                                               checked="@_copingSelections[c]"
+                                               @onchange="e => ToggleCoping(c, (bool)e.Value!)" />
+                                        <span>@c</span>
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                        break;
+
+                    case 12:
+                        <div class="ml-field">
+                            <label class="ml-label">Next actions (optional)</label>
+                            <InputTextArea class="ml-input ml-input--area ml-input--full" @bind-Value="_model.NextActions" />
+                        </div>
+                        break;
+
+                    case 13:
+                        <div class="ml-field">
+                            <label class="ml-label">Gratitudes (up to three)</label>
+                            <div class="ml-gratitudes ml-gratitudes--stacked">
+                                @for (int i = 0; i < _model.Gratitudes.Count; i++)
+                                {
+                                    <InputText class="ml-input" placeholder="I'm grateful for…" @bind-Value="_model.Gratitudes[i]" />
+                                }
+                            </div>
+                            @if (_gratitudesInvalid)
+                            {
+                                <div class="ml-inline-error">Add at least one gratitude (or leave all empty to skip).</div>
+                            }
+                        </div>
+                        break;
+
+                    case 14:
+                        <div class="ml-field">
+                            <label class="ml-label">One positive thing today (optional)</label>
+                            <InputTextArea class="ml-input ml-input--area ml-input--full" @bind-Value="_model.PositiveThing" />
+                        </div>
+                        break;
+
+                    case 15:
+                        <div class="ml-field">
+                            <label class="ml-label">Notes (optional)</label>
+                            <InputTextArea class="ml-input ml-input--area ml-input--full" @bind-Value="_model.Notes" />
+                        </div>
+                        break;
+                }
+            </fieldset>
+
+            <ValidationSummary class="ml-validation-summary" />
+
+            <!-- Navigation -->
+            <div class="ml-actions">
+                <button type="button" class="ml-btn ml-btn--ghost" @onclick="PrevQuestion" disabled="@(_step == 1)">Back</button>
+
+                @if (_step < _totalSteps)
+                {
+                    <button type="button" class="ml-btn ml-btn--primary" @onclick="NextQuestion">Next</button>
+                }
+                else
+                {
+                    <button type="submit" class="ml-btn ml-btn--primary">Save</button>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(_status))
+            {
+                <p class="ml-status">@_status</p>
+            }
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private string? _status;
+    private int _step = 1;
+    private readonly int _totalSteps = 15;
+
+    private MoodFormModel _model = new();
+    private EditContext _editContext = default!;
+    private ValidationMessageStore _messages = default!;
+
+    private Dictionary<SymptomFlags, bool> _symptomSelections = new();
+    private Dictionary<CopingStrategyFlags, bool> _copingSelections = new();
+
+    private bool _currentInvalid;
+    private bool _gratitudesInvalid;
+
+    protected override void OnInitialized() => ResetForm();
+
+    private void NextQuestion()
+    {
+        _currentInvalid = !ValidateCurrentStep();
+        if (!_currentInvalid && _step < _totalSteps) _step++;
+    }
+
+    private void PrevQuestion()
+    {
+        if (_step > 1) _step--;
+        _currentInvalid = false;
+        _gratitudesInvalid = false;
+        _messages.Clear();
+        _editContext.NotifyValidationStateChanged();
+    }
+
+    private async Task HandleSubmit()
+    {
+        var dto = new MoodEntryDto(
+            _model.MoodScore,
+            _model.MoodWord,
+            _model.PrimaryEmotion,
+            _model.Symptoms,
+            _model.SleepHours,
+            _model.EnergyLevel,
+            _model.CaffeineDrinks,
+            _model.Movement,
+            _model.StressScore,
+            _model.StressCause,
+            _model.CopingStrategies,
+            _model.NextActions,
+            _model.Gratitudes,
+            _model.PositiveThing,
+            _model.Notes
+        );
+        var id = await MoodService.CreateAsync(dto);
+        _status = $"Saved. Entry ID: {id}";
+        navigation.NavigateTo("/");
+    }
+
+    private void ResetForm()
+    {
+        _model = new MoodFormModel();
+        _editContext = new EditContext(_model);
+        _messages = new ValidationMessageStore(_editContext);
+
+        _symptomSelections = Enum.GetValues<SymptomFlags>()
+            .Where(s => s != SymptomFlags.None)
+            .ToDictionary(s => s, _ => false);
+
+        _copingSelections = Enum.GetValues<CopingStrategyFlags>()
+            .Where(c => c != CopingStrategyFlags.None)
+            .ToDictionary(c => c, _ => false);
+
+        _step = 1;
+        _currentInvalid = false;
+        _gratitudesInvalid = false;
+    }
+
+    private void ToggleSymptom(SymptomFlags s, bool isChecked)
+    {
+        _symptomSelections[s] = isChecked;
+        _model.Symptoms = isChecked ? (_model.Symptoms | s) : (_model.Symptoms & ~s);
+    }
+
+    private void ToggleCoping(CopingStrategyFlags c, bool isChecked)
+    {
+        _copingSelections[c] = isChecked;
+        _model.CopingStrategies = isChecked ? (_model.CopingStrategies | c) : (_model.CopingStrategies & ~c);
+    }
+
+    private bool ValidateCurrentStep()
+    {
+        _messages.Clear();
+        _gratitudesInvalid = false;
+        bool ok = true;
+
+        bool Validate<T>(System.Linq.Expressions.Expression<Func<T>> accessor)
+        {
+            var field = FieldIdentifier.Create(accessor);
+            var value = accessor.Compile().Invoke();
+            var results = new List<ValidationResult>();
+            var ctx = new ValidationContext(_model) { MemberName = field.FieldName };
+            bool valid = Validator.TryValidateProperty(value, ctx, results);
+
+            if (!valid)
+            {
+                ok = false;
+                _messages.Add(field, results.Select(r => r.ErrorMessage!));
+            }
+            return valid;
+        }
+
+        switch (_step)
+        {
+            case 1: Validate(() => _model.MoodScore); break;
+            case 2: Validate(() => _model.MoodWord); break;
+            case 5: Validate(() => _model.SleepHours); break;
+            case 6: Validate(() => _model.EnergyLevel); break;
+            case 7: Validate(() => _model.CaffeineDrinks); break;
+            case 9: Validate(() => _model.StressScore); break;
+        }
+
+        _editContext.NotifyValidationStateChanged();
+        return ok && !_gratitudesInvalid;
+    }
+
+    private static string GetQuestionTitle(int step) => step switch
+    {
+        1 => "How would you rate your mood?",
+        2 => "One word for your mood",
+        3 => "Pick your strongest emotion",
+        4 => "Any body symptoms?",
+        5 => "How many hours did you sleep?",
+        6 => "Energy level",
+        7 => "How many caffeinated drinks?",
+        8 => "How much did you move today?",
+        9 => "Stress level",
+        10 => "Main cause of stress (optional)",
+        11 => "What coping strategies did you use?",
+        12 => "Next actions (optional)",
+        13 => "List up to three gratitudes",
+        14 => "One positive thing today (optional)",
+        15 => "Any notes? (optional)",
+        _ => ""
+    };
+
+    public class MoodFormModel
+    {
+        [Range(0, 10, ErrorMessage = "Mood must be between 0 and 10.")]
+        public int MoodScore { get; set; }
+
+        [Required(ErrorMessage = "Please enter a word that describes your mood.")]
+        [StringLength(30, ErrorMessage = "Keep it to 30 characters max.")]
+        public string? MoodWord { get; set; }
+
+        public PrimaryEmotion PrimaryEmotion { get; set; } = PrimaryEmotion.Calm;
+        public SymptomFlags Symptoms { get; set; } = SymptomFlags.None;
+
+        [Range(0, 24, ErrorMessage = "Sleep must be 0–24 hours.")]
+        public int SleepHours { get; set; }
+
+        [Range(0, 10, ErrorMessage = "Energy must be 0–10.")]
+        public int EnergyLevel { get; set; }
+
+        [Range(0, 10, ErrorMessage = "Caffeine drinks must be 0–10.")]
+        public int CaffeineDrinks { get; set; }
+
+        public MovementLevel Movement { get; set; } = MovementLevel.No;
+
+        [Range(0, 10, ErrorMessage = "Stress must be 0–10.")]
+        public int StressScore { get; set; }
+
+        public string? StressCause { get; set; }
+        public CopingStrategyFlags CopingStrategies { get; set; } = CopingStrategyFlags.None;
+        public string? NextActions { get; set; }
+        public List<string> Gratitudes { get; set; } = new() { "", "", "" };
+        public string? PositiveThing { get; set; }
+        public string? Notes { get; set; }
+    }
+}
