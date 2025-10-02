@@ -1,0 +1,111 @@
+﻿@page "/tips"
+@using MoodLift.Core.Entities
+@using MoodLift.Core.Interfaces
+@using Microsoft.Extensions.AI
+@inject IMoodEntryService MoodEntryService
+@inject IChatClient ChatClient
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+<PageTitle>Tips</PageTitle>
+
+<div class="tips-container">
+    <a href="/" class="ml-home-link">← Home</a>
+
+    <h3 class="text-center mt-3 header-text">Your Personalized Tips</h3>
+
+    @if (loading)
+    {
+        <div class="loading-screen">
+            <div class="spinner"></div>
+            <p>Generating your personalized tips...</p>
+        </div>
+    }
+    else if (errorMessage is not null)
+    {
+        <p class="text-danger text-center">@errorMessage</p>
+    }
+    else if (tips is not null)
+    {
+        <div class="d-flex justify-content-center flex-wrap mt-4">
+            <div class="sticky-note">
+                <div class="note-pin"></div>
+                <h5>Tip 1</h5>
+                <p>@tips.Tip1</p>
+            </div>
+            <div class="sticky-note">
+                <div class="note-pin"></div>
+                <h5>Tip 2</h5>
+                <p>@tips.Tip2</p>
+            </div>
+            <div class="sticky-note">
+                <div class="note-pin"></div>
+                <h5>Tip 3</h5>
+                <p>@tips.Tip3</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <p class="text-center">No tips available.</p>
+    }
+</div>
+
+@code {
+    private TipsResponse? tips;
+    private bool loading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var recentEntries = await MoodEntryService.GetRecentAsync(10);
+
+            string context = string.Join("\n\n", recentEntries.Select(e =>
+                $"Date: {e.CreatedAtUtc:g}\n" +
+                $"Mood Score: {e.MoodScore}, Energy: {e.EnergyLevel}, Stress: {e.StressScore}\n" +
+                $"Mood Word: {e.MoodWord ?? ""}, Emotion: {e.PrimaryEmotion}\n" +
+                $"Symptoms: {e.Symptoms}, Sleep: {e.SleepHours}, Caffeine: {e.CaffeineDrinks}, Movement: {e.Movement}\n" +
+                $"Stress Cause: {e.StressCause ?? ""}\n" +
+                $"Coping Strategies: {e.CopingStrategies}, Next Actions: {e.NextActions ?? ""}\n" +
+                $"Positive Thing: {e.PositiveThing ?? ""}, Notes: {e.Notes ?? ""}\n" +
+                $"Gratitudes: {string.Join(", ", e.Gratitudes.Select(g => g.Text))}"
+            ));
+
+            var messages = new List<ChatMessage>
+            {
+                new(ChatRole.System, "You are a helpful wellness coach. Based on the last 10 user mood entries, return exactly 3 short, actionable tips."),
+                new(ChatRole.User, context)
+            };
+
+            ChatResponse<TipsResponse> response = await ChatClient.GetResponseAsync<TipsResponse>(
+                messages,
+                options: null,
+                useJsonSchemaResponseFormat: true
+            );
+
+            tips = response.Result;
+
+            if (tips is null)
+            {
+                errorMessage = "No tips returned from AI.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load tips: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private class TipsResponse
+    {
+        public string Tip1 { get; set; } = string.Empty;
+        public string Tip2 { get; set; } = string.Empty;
+        public string Tip3 { get; set; } = string.Empty;
+    }
+}

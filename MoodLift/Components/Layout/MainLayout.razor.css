@@ -9,6 +9,7 @@
 
 /* Header */
 .ml-header {
+    min-height: 80px;
     height: 80px;
     background: var(--brand);
     color: #fff;
@@ -60,6 +61,7 @@
 /* Footer */
 .ml-footer {
     height: 80px;
+    min-height: 80px;
     background: var(--brand);
     color: #fff;
     display: flex;

@@ -1,0 +1,62 @@
+﻿.music-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 15px;
+    margin-bottom: 25px;
+}
+/* Home link */
+.ml-home-link {
+    align-self: flex-start;
+    color: var(--brand);
+    text-decoration: none;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    display: inline-block;
+}
+
+    .ml-home-link:hover {
+        text-decoration: underline;
+    }
+
+.header-text {
+    color: var(--brand);
+    font-size: clamp(2rem, 2rem + 1.2vw, 4rem);
+}
+
+.songs-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 25px;
+    padding: 10px 20px;
+    width:75%;
+}
+
+/* Error message */
+.text-danger {
+    font-weight: 500;
+    color: #d9534f !important;
+}
+
+/* Song embeds container */
+.d-flex.flex-wrap {
+    gap: 20px;
+}
+
+/* Spotify iframes */
+iframe {
+    border-radius: 8px;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+    iframe:hover {
+        transform: translateY(-6px);
+    }
+
+/* "No songs found" text */
+p.text-center {
+    font-size: 1.1rem;
+    color: #666;
+    margin-top: 25px;
+}

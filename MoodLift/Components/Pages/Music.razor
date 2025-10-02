@@ -1,0 +1,89 @@
+﻿@page "/music"
+@inject IMoodEntryService MoodEntryService
+@using MoodLift.Core.Entities
+@using MoodLift.Core.Interfaces
+@using MoodLift.Infrastructure.Services
+@using Microsoft.Extensions.AI
+@inject IChatClient ChatClient
+@inject SpotifyService SpotifyService
+@rendermode InteractiveServer
+
+<!-- Header -->
+<div class="music-container">
+    <a href="/" class="ml-home-link">← Home</a>
+    <h3 class="header-text">Music Recommendations</h3>
+
+
+<!-- Content -->
+@if (errorMessage is not null)
+{
+    <p class="text-danger text-center">@errorMessage</p>
+}
+else if (trackIds?.Any() == true)
+{
+    <div class="songs-container">
+        @foreach (var id in trackIds.Take(8)) 
+        {
+            <iframe src=@($"https://open.spotify.com/embed/track/{id}")
+                    width="300" height="380" frameborder="0"
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    loading="lazy"></iframe>
+        }
+    </div>
+}
+else
+{
+    <p class="text-center">No songs found.</p>
+}
+</div>
+
+@code {
+    private List<string>? trackIds;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var recentEntries = await MoodEntryService.GetRecentAsync(10);
+
+            string context = string.Join("\n\n", recentEntries.Select(e =>
+                $"Date: {e.CreatedAtUtc:g}\n" +
+                $"Mood Score: {e.MoodScore}, Energy: {e.EnergyLevel}, Stress: {e.StressScore}\n" +
+                $"Mood Word: {e.MoodWord ?? ""}, Emotion: {e.PrimaryEmotion}\n" +
+                $"Symptoms: {e.Symptoms}, Sleep: {e.SleepHours}, Caffeine: {e.CaffeineDrinks}, Movement: {e.Movement}\n" +
+                $"Stress Cause: {e.StressCause ?? ""}\n" +
+                $"Coping Strategies: {e.CopingStrategies}, Next Actions: {e.NextActions ?? ""}\n" +
+                $"Positive Thing: {e.PositiveThing ?? ""}, Notes: {e.Notes ?? ""}\n" +
+                $"Gratitudes: {string.Join(", ", e.Gratitudes.Select(g => g.Text))}"
+            ));
+
+            // Ask AI for search query
+            var messages = new List<ChatMessage>
+            {
+                new(ChatRole.System, "You are a music coach. Based on the last 10 mood entries, return a single short search phrase that will find uplifting songs on Spotify."),
+                new(ChatRole.User, context)
+            };
+
+            var response = await ChatClient.GetResponseAsync<MusicQueryResponse>(
+                messages,
+                options: null,
+                useJsonSchemaResponseFormat: true
+            );
+
+            var query = response.Result?.Query ?? "happy upbeat songs";
+
+            // Fetch up to 8 tracks
+            trackIds = await SpotifyService.SearchTracksAsync(query, 8);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load songs: {ex.Message}";
+        }
+    }
+
+    public class MusicQueryResponse
+    {
+        public string Query { get; set; } = string.Empty;
+    }
+}

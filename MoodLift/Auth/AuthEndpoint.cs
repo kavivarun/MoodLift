@@ -35,7 +35,7 @@ namespace MoodLift.Auth
                     Claim[] claims = [
                         new(ClaimTypes.Name, name),
                         new(ClaimTypes.Email, email),
-                         new(ClaimTypes.NameIdentifier, googleId)
+                         new(ClaimTypes.NameIdentifier, googleId!)
                     ];
 
                     var identity = new ClaimsIdentity(claims, Constant.Scheme);

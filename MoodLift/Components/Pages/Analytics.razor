@@ -1,0 +1,319 @@
+﻿@page "/analytics"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using MoodLift.Core.Entities
+@using MoodLift.Core.Enum
+@inject AuthenticationStateProvider Auth
+@inject MoodLift.Infrastructure.Repositories.MoodLiftDbContext Db
+
+<PageTitle>Analytics</PageTitle>
+
+<div class="ml-analytics">
+    <a href="/" class="ml-home-link">← Home</a>
+    <header class="ml-analytics__head">
+        <h1 class="ml-title">Analytics</h1>
+        <div class="ml-tabs">
+            <button class="ml-tab @(view == ViewMode.Dashboard ? "is-active" : null)" @onclick="@(() => view = ViewMode.Dashboard)">Dashboard</button>
+            <button class="ml-tab @(view == ViewMode.Submissions ? "is-active" : null)" @onclick="@(() => view = ViewMode.Submissions)">Submissions</button>
+        </div>
+    </header>
+
+    <!-- Filters -->
+    <section class="ml-filters">
+        <div class="ml-filter">
+            <label>From</label>
+            <input type="date" @bind="fromLocal" />
+        </div>
+        <div class="ml-filter">
+            <label>To</label>
+            <input type="date" @bind="toLocal" />
+        </div>
+        <div class="ml-filter ml-filter--row">
+            <button class="ml-btn ml-btn--ghost" @onclick="@(() => QuickRangeDays(7))">Last 7 days</button>
+            <button class="ml-btn ml-btn--ghost" @onclick="@(() => QuickRangeDays(30))">Last 30 days</button>
+            <button class="ml-btn ml-btn--ghost" @onclick="@ClearRange">All time</button>
+        </div>
+    </section>
+
+    @if (isLoading)
+    {
+        <p>Loading…</p>
+    }
+    else if (!entries.Any())
+    {
+        <div class="ml-empty"><p>No entries yet for this range.</p></div>
+    }
+    else if (view == ViewMode.Dashboard)
+    {
+        <!-- ===== DASHBOARD VIEW ===== -->
+        <section class="ml-kpis">
+            <div class="kpi"><div class="kpi__label">Avg Mood</div><div class="kpi__value">@AvgMood:F1</div></div>
+            <div class="kpi"><div class="kpi__label">Avg Sleep (h)</div><div class="kpi__value">@AvgSleep:F1</div></div>
+            <div class="kpi"><div class="kpi__label">Avg Stress</div><div class="kpi__value">@AvgStress:F1</div></div>
+        </section>
+
+        <section class="ml-charts">
+            <!-- Mood over time (line, datetime X) -->
+            <article class="ml-card">
+                <header><h3>Mood over time</h3></header>
+                <ApexChart TItem="PointTime" Title="Mood" Height="220"
+                           XAxisType="XAxisType.Datetime">
+                    <ApexPointSeries TItem="PointTime"
+                                     Items="timeMood"
+                                     Name="Mood"
+                                     SeriesType="SeriesType.Line"
+                                     XValue="p => p.Time"
+                                     YValue="p => (decimal?)p.Value" />
+                </ApexChart>
+            </article>
+
+            <!-- Energy & Stress (two lines) -->
+            <article class="ml-card">
+                <header><h3>Energy & Stress trend</h3></header>
+                <ApexChart TItem="PointTime" Height="220"
+                           XAxisType="XAxisType.Datetime">
+                    <ApexPointSeries TItem="PointTime"
+                                     Items="timeEnergy"
+                                     Name="Energy"
+                                     SeriesType="SeriesType.Line"
+                                     XValue="p => p.Time"
+                                     YValue="p => (decimal?)p.Value" />
+                    <ApexPointSeries TItem="PointTime"
+                                     Items="timeStress"
+                                     Name="Stress"
+                                     SeriesType="SeriesType.Line"
+                                     XValue="p => p.Time"
+                                     YValue="p => (decimal?)p.Value" />
+                </ApexChart>
+            </article>
+
+            <!-- Emotion distribution (donut) -->
+            <article class="ml-card">
+                <header><h3>Emotion distribution</h3></header>
+                <ApexChart TItem="CategoryValue" Height="260">
+                    <ApexPointSeries TItem="CategoryValue"
+                                     Items="emotionBuckets"
+                                     Name="Emotions"
+                                     SeriesType="SeriesType.Donut"
+                                     XValue="c => c.Category"
+                                     YValue="c => (decimal?)c.Value" />
+                </ApexChart>
+            </article>
+
+            <!-- Symptoms (bar) -->
+            <article class="ml-card">
+                <header><h3>Symptoms (count)</h3></header>
+                <ApexChart TItem="CategoryValue" Height="260">
+                    <ApexPointSeries TItem="CategoryValue"
+                                     Items="symptomBuckets"
+                                     Name="Symptoms"
+                                     SeriesType="SeriesType.Bar"
+                                     XValue="c => c.Category"
+                                     YValue="c => (decimal?)c.Value" />
+                </ApexChart>
+            </article>
+
+            <!-- Sleep vs Caffeine (scatter) -->
+            <article class="ml-card">
+                <header><h3>Sleep vs Caffeine</h3></header>
+                <ApexChart TItem="PointXY" Height="260"
+                           XAxisType="XAxisType.Numeric">
+                    <ApexPointSeries TItem="PointXY"
+                                     Items="sleepVsCaffeine"
+                                     Name="Drinks vs Sleep"
+                                     SeriesType="SeriesType.Scatter"
+                                     XValue="p => p.X"
+                                     YValue="p => (decimal?)p.Y" />
+                </ApexChart>
+            </article>
+        </section>
+    }
+    else
+    {
+        <!-- ===== SUBMISSIONS VIEW ===== -->
+        <section class="ml-tablecard">
+            <header class="ml-tablecard__head">
+                <h3>All submissions (@paged.TotalCount)</h3>
+                <div class="ml-pager">
+                    <button class="ml-btn ml-btn--ghost" @onclick="PrevPage" disabled="@(!paged.HasPrev)">Prev</button>
+                    <span>Page @paged.Page of @paged.TotalPages</span>
+                    <button class="ml-btn ml-btn--ghost" @onclick="NextPage" disabled="@(!paged.HasNext)">Next</button>
+                </div>
+            </header>
+
+            <div class="ml-tablewrap">
+                <table class="ml-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Mood</th>
+                            <th>Emotion</th>
+                            <th>Sleep</th>
+                            <th>Energy</th>
+                            <th>Stress</th>
+                            <th>Caffeine</th>
+                            <th>Movement</th>
+                            <th>Symptoms</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var e in paged.PageItems)
+                        {
+                            <tr>
+                                <td>@AsLocal(e.CreatedAtUtc).ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@e.MoodScore</td>
+                                <td>@e.PrimaryEmotion</td>
+                                <td>@e.SleepHours</td>
+                                <td>@e.EnergyLevel</td>
+                                <td>@e.StressScore</td>
+                                <td>@e.CaffeineDrinks</td>
+                                <td>@e.Movement</td>
+                                <td>@JoinFlags(e.Symptoms)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    enum ViewMode { Dashboard, Submissions }
+    private ViewMode view = ViewMode.Dashboard;
+    private bool isLoading = true;
+
+    private List<MoodEntry> entries = new();
+
+    // date filters (local)
+    private DateTime? fromLocal;
+    private DateTime? toLocal;
+
+    // paging
+    private int pageSize = 20;
+    private int pageIndex = 1;
+    private Paged<MoodEntry> paged => Paged<MoodEntry>.Create(entries.OrderByDescending(e => e.CreatedAtUtc), pageIndex, pageSize);
+
+    // chart data models
+    public sealed class PointTime { public DateTime Time { get; set; } public double Value { get; set; } }
+    public sealed class PointXY { public double X { get; set; } public double Y { get; set; } }
+    public sealed class CategoryValue { public string Category { get; set; } = ""; public double Value { get; set; } }
+
+    // series
+    private List<PointTime> timeMood = new();
+    private List<PointTime> timeEnergy = new();
+    private List<PointTime> timeStress = new();
+    private List<PointXY> sleepVsCaffeine = new();
+    private List<CategoryValue> emotionBuckets = new();
+    private List<CategoryValue> symptomBuckets = new();
+
+    // KPIs
+    private double AvgMood => entries.Any() ? entries.Average(e => (double)e.MoodScore) : 0;
+    private double AvgSleep => entries.Any() ? entries.Average(e => (double)e.SleepHours) : 0;
+    private double AvgStress => entries.Any() ? entries.Average(e => (double)e.StressScore) : 0;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+
+        var auth = await Auth.GetAuthenticationStateAsync();
+        var user = auth.User;
+        var googleId = GetGoogleId(user);
+
+        var q = Db.MoodEntries.AsNoTracking().Where(x => x.GoogleUserId == googleId);
+
+        if (fromLocal is DateTime f)
+            q = q.Where(x => x.CreatedAtUtc >= LocalToUtc(f.Date));
+        if (toLocal is DateTime t)
+            q = q.Where(x => x.CreatedAtUtc <= LocalToUtc(t.Date.AddDays(1).AddTicks(-1)));
+
+        entries = await q.OrderBy(x => x.CreatedAtUtc).ToListAsync();
+
+        BuildSeries();
+        if (pageIndex > paged.TotalPages) pageIndex = paged.TotalPages == 0 ? 1 : paged.TotalPages;
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private void BuildSeries()
+    {
+        timeMood = entries.Select(e => new PointTime { Time = AsLocal(e.CreatedAtUtc).Date, Value = e.MoodScore }).ToList();
+        timeEnergy = entries.Select(e => new PointTime { Time = AsLocal(e.CreatedAtUtc).Date, Value = e.EnergyLevel }).ToList();
+        timeStress = entries.Select(e => new PointTime { Time = AsLocal(e.CreatedAtUtc).Date, Value = e.StressScore }).ToList();
+
+        sleepVsCaffeine = entries.Select(e => new PointXY { X = e.CaffeineDrinks, Y = e.SleepHours }).ToList();
+
+        emotionBuckets = Enum.GetValues<PrimaryEmotion>()
+            .Select(em => new CategoryValue { Category = em.ToString(), Value = entries.Count(x => x.PrimaryEmotion == em) })
+            .Where(c => c.Value > 0).ToList();
+
+        symptomBuckets = Enum.GetValues<SymptomFlags>()
+            .Where(f => f != SymptomFlags.None)
+            .Select(f => new CategoryValue { Category = f.ToString(), Value = entries.Count(x => x.Symptoms.HasFlag(f)) })
+            .Where(c => c.Value > 0).ToList();
+    }
+
+    // paging + filters
+    private async Task PrevPage() { if (paged.HasPrev) { pageIndex--; await InvokeAsync(StateHasChanged); } }
+    private async Task NextPage() { if (paged.HasNext) { pageIndex++; await InvokeAsync(StateHasChanged); } }
+    private async Task QuickRangeDays(int days)
+    {
+        var today = AsLocal(DateTime.UtcNow).Date;
+        fromLocal = today.AddDays(-(days - 1));
+        toLocal = today;
+        pageIndex = 1;
+        await LoadAsync();
+    }
+    private async Task ClearRange()
+    {
+        fromLocal = null; toLocal = null; pageIndex = 1; await LoadAsync();
+    }
+
+    // tz helpers (Sydney)
+    private static readonly string SydneyTzId = "Australia/Sydney";
+    private static TimeZoneInfo SydTz => TimeZoneInfo.FindSystemTimeZoneById(SydneyTzId);
+    private static DateTime AsLocal(DateTime utc) => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), SydTz);
+    private static DateTime LocalToUtc(DateTime local) => TimeZoneInfo.ConvertTimeToUtc(local, SydTz);
+
+    private static string GetGoogleId(ClaimsPrincipal user)
+        => user.FindFirst("sub")?.Value
+           ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+           ?? user.FindFirst("googleid")?.Value
+           ?? string.Empty;
+
+    private static string JoinFlags(SymptomFlags flags)
+        => flags == SymptomFlags.None
+            ? "—"
+            : string.Join(", ", Enum.GetValues<SymptomFlags>().Where(f => f != SymptomFlags.None && flags.HasFlag(f)));
+
+    // simple in-memory pager
+    public sealed class Paged<T>
+    {
+        public int Page { get; }
+        public int PageSize { get; }
+        public int TotalCount { get; }
+        public int TotalPages => Math.Max(1, (int)Math.Ceiling((double)TotalCount / PageSize));
+        public bool HasPrev => Page > 1;
+        public bool HasNext => Page < TotalPages;
+        public IReadOnlyList<T> PageItems { get; }
+
+        private Paged(IReadOnlyList<T> items, int page, int pageSize, int total)
+        { PageItems = items; Page = page; PageSize = pageSize; TotalCount = total; }
+
+        public static Paged<T> Create(IEnumerable<T> src, int page, int pageSize)
+        {
+            var list = src.ToList();
+            var total = list.Count;
+            var p = Math.Max(1, page);
+            var skip = (p - 1) * pageSize;
+            return new Paged<T>(list.Skip(skip).Take(pageSize).ToList(), p, pageSize, total);
+        }
+    }
+}
