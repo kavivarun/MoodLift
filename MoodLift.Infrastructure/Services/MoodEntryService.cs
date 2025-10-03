@@ -23,28 +23,13 @@ public class MoodEntryService : IMoodEntryService
         var entry = new MoodEntry(dto.MoodScore, dto.EnergyLevel, dto.StressScore)
         {
             GoogleUserId = userId,
-            MoodWord = dto.MoodWord?.Trim(),
             PrimaryEmotion = dto.PrimaryEmotion,
             Symptoms = dto.Symptoms,
             SleepHours = dto.SleepHours,
             CaffeineDrinks = dto.CaffeineDrinks,
-            Movement = dto.Movement,
-            StressCause = string.IsNullOrWhiteSpace(dto.StressCause) ? null : dto.StressCause!.Trim(),
             CopingStrategies = dto.CopingStrategies,
-            NextActions = string.IsNullOrWhiteSpace(dto.NextActions) ? null : dto.NextActions!.Trim(),
-            PositiveThing = string.IsNullOrWhiteSpace(dto.PositiveThing) ? null : dto.PositiveThing!.Trim(),
             Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes!.Trim()
         };
-
-        // Keep up to three gratitude items, ignore empties
-        var cleaned = dto.Gratitudes
-            // Anonymous method + LINQ using a lambda expression:
-            .Where(g => !string.IsNullOrWhiteSpace(g)) // <-- requirement satisfied here
-            .Select((text, idx) => new GratitudeItem { Text = text.Trim(), DisplayOrder = idx })
-            .Take(3)
-            .ToList();
-
-        entry.Gratitudes.AddRange(cleaned);
 
         await _repo.AddAsync(entry, ct);
         await _repo.SaveChangesAsync(ct);

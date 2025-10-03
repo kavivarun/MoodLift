@@ -10,7 +10,6 @@
 
 <!-- Header -->
 <div class="music-container">
-    <a href="/" class="ml-home-link">← Home</a>
     <h3 class="header-text">Music Recommendations</h3>
 
 
@@ -33,7 +32,7 @@ else if (trackIds?.Any() == true)
 }
 else
 {
-    <p class="text-center">No songs found.</p>
+		<MoodLift.Components.Shared.LoadingOverlay IsVisible="true" />
 }
 </div>
 
@@ -50,12 +49,10 @@ else
             string context = string.Join("\n\n", recentEntries.Select(e =>
                 $"Date: {e.CreatedAtUtc:g}\n" +
                 $"Mood Score: {e.MoodScore}, Energy: {e.EnergyLevel}, Stress: {e.StressScore}\n" +
-                $"Mood Word: {e.MoodWord ?? ""}, Emotion: {e.PrimaryEmotion}\n" +
-                $"Symptoms: {e.Symptoms}, Sleep: {e.SleepHours}, Caffeine: {e.CaffeineDrinks}, Movement: {e.Movement}\n" +
-                $"Stress Cause: {e.StressCause ?? ""}\n" +
-                $"Coping Strategies: {e.CopingStrategies}, Next Actions: {e.NextActions ?? ""}\n" +
-                $"Positive Thing: {e.PositiveThing ?? ""}, Notes: {e.Notes ?? ""}\n" +
-                $"Gratitudes: {string.Join(", ", e.Gratitudes.Select(g => g.Text))}"
+                $"Emotion: {e.PrimaryEmotion}\n" +
+                $"Symptoms: {e.Symptoms}, Sleep: {e.SleepHours}, Caffeine: {e.CaffeineDrinks},\n" +
+                $"Coping Strategies: {e.CopingStrategies},\n" +
+                $"Notes: {e.Notes ?? ""}\n"
             ));
 
             // Ask AI for search query

@@ -10,17 +10,6 @@
     gap: 1rem;
 }
 
-/* Home link: top-left */
-.ml-home-link {
-    align-self: flex-start;
-    color: var(--brand);
-    text-decoration: none;
-    font-weight: 600;
-}
-
-    .ml-home-link:hover {
-        text-decoration: underline;
-    }
 
 /* Title centered */
 .ml-app-title {

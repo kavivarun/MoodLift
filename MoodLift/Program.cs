@@ -1,5 +1,7 @@
 using ApexCharts;
+using Azure.AI.OpenAI;
 using Azure.Identity;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
@@ -8,7 +10,6 @@ using MoodLift.Components;
 using MoodLift.Core.Interfaces;
 using MoodLift.Infrastructure.Repositories;
 using MoodLift.Infrastructure.Services;
-using Azure.AI.OpenAI;
 using System.ClientModel;
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +42,8 @@ builder.Services.AddAuthentication(Constant.Scheme)
         options.ClientId = builder.Configuration["Google:ClientId"]!;
         options.ClientSecret = builder.Configuration["Google:ClientSecret"]!;
         options.SignInScheme = Constant.Scheme;
+        options.Scope.Add("profile");
+        options.ClaimActions.MapJsonKey("picture", "picture", "url");
     });
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthorization();

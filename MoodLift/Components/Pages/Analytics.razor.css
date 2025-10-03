@@ -5,8 +5,9 @@
 }
 
 .ml-title {
-    font-size: clamp(1.4rem,2vw,1.8rem);
+    font-size: clamp(1.5rem,2vw,4rem);
     margin: .25rem 0 1rem;
+    color: var(--brand);
 }
 
 .ml-analytics__head {
@@ -14,6 +15,7 @@
     align-items: flex-end;
     justify-content: space-between;
     gap: .75rem;
+    margin-bottom:10px;
 }
 
 .ml-tabs {
@@ -21,17 +23,6 @@
     gap: .5rem;
 }
 
-/* Home link: top-left */
-.ml-home-link {
-    align-self: flex-start;
-    color: var(--brand);
-    text-decoration: none;
-    font-weight: 600;
-}
-
-    .ml-home-link:hover {
-        text-decoration: underline;
-    }
 
 .ml-tab {
     padding: .5rem .75rem;

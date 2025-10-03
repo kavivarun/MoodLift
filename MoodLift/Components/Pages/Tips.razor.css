@@ -5,19 +5,6 @@
     margin-top: 15px;
     margin-bottom: 25px;
 }
-/* Home link */
-.ml-home-link {
-    align-self: flex-start;
-    color: var(--brand);
-    text-decoration: none;
-    font-weight: 600;
-    margin-bottom: 1rem;
-    display: inline-block;
-}
-
-    .ml-home-link:hover {
-        text-decoration: underline;
-    }
 
 .header-text {
     color: var(--brand);

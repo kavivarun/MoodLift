@@ -13,7 +13,6 @@
 <PageTitle>Analytics</PageTitle>
 
 <div class="ml-analytics">
-    <a href="/" class="ml-home-link">← Home</a>
     <header class="ml-analytics__head">
         <h1 class="ml-title">Analytics</h1>
         <div class="ml-tabs">
@@ -21,23 +20,6 @@
             <button class="ml-tab @(view == ViewMode.Submissions ? "is-active" : null)" @onclick="@(() => view = ViewMode.Submissions)">Submissions</button>
         </div>
     </header>
-
-    <!-- Filters -->
-    <section class="ml-filters">
-        <div class="ml-filter">
-            <label>From</label>
-            <input type="date" @bind="fromLocal" />
-        </div>
-        <div class="ml-filter">
-            <label>To</label>
-            <input type="date" @bind="toLocal" />
-        </div>
-        <div class="ml-filter ml-filter--row">
-            <button class="ml-btn ml-btn--ghost" @onclick="@(() => QuickRangeDays(7))">Last 7 days</button>
-            <button class="ml-btn ml-btn--ghost" @onclick="@(() => QuickRangeDays(30))">Last 30 days</button>
-            <button class="ml-btn ml-btn--ghost" @onclick="@ClearRange">All time</button>
-        </div>
-    </section>
 
     @if (isLoading)
     {
@@ -51,9 +33,18 @@
     {
         <!-- ===== DASHBOARD VIEW ===== -->
         <section class="ml-kpis">
-            <div class="kpi"><div class="kpi__label">Avg Mood</div><div class="kpi__value">@AvgMood:F1</div></div>
-            <div class="kpi"><div class="kpi__label">Avg Sleep (h)</div><div class="kpi__value">@AvgSleep:F1</div></div>
-            <div class="kpi"><div class="kpi__label">Avg Stress</div><div class="kpi__value">@AvgStress:F1</div></div>
+            <div class="kpi">
+                <div class="kpi__label">Avg Mood</div>
+                <div class="kpi__value">@($"{AvgMood:F2}")</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi__label">Avg Sleep (h)</div>
+                <div class="kpi__value">@($"{AvgSleep:F2}")</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi__label">Avg Stress</div>
+                <div class="kpi__value">@($"{AvgStress:F2}")</div>
+            </div>
         </section>
 
         <section class="ml-charts">
@@ -156,7 +147,6 @@
                             <th>Energy</th>
                             <th>Stress</th>
                             <th>Caffeine</th>
-                            <th>Movement</th>
                             <th>Symptoms</th>
                         </tr>
                     </thead>
@@ -171,7 +161,6 @@
                                 <td>@e.EnergyLevel</td>
                                 <td>@e.StressScore</td>
                                 <td>@e.CaffeineDrinks</td>
-                                <td>@e.Movement</td>
                                 <td>@JoinFlags(e.Symptoms)</td>
                             </tr>
                         }

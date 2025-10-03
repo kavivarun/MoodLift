@@ -1,24 +1,39 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
 @inherits LayoutComponentBase
 
 <div class="ml-shell">
     <header class="ml-header">
         <div class="ml-brand">
-            <span class="ml-appname">MoodLift</span>
+            <span class="ml-appname" onclick="window.location.href='/'">MoodLift</span>
         </div>
 
         <AuthorizeView>
-            <Authorized>
-                <form action="/authentication/logout" method="post">
-                    <AntiforgeryToken />
-                    <button type="submit" class="ml-logout">Logout</button>
-                </form>
+            <Authorized Context="auth">
+                <div class="ml-user-menu">
+                    <div class="ml-user-info">
+                        <img class="ml-avatar" src="@auth.User.FindFirst("picture")?.Value" alt="Profile" />
+                        <span class="ml-username">@auth.User.Identity?.Name</span>
+                    </div>
+
+                    <div class="ml-dropdown">
+                        <form action="/authentication/logout" method="post" class="ml-auth-form">
+                            <AntiforgeryToken />
+                            <button type="submit" class="ml-logout-btn">Logout</button>
+                        </form>
+                    </div>
+                </div>
             </Authorized>
             <NotAuthorized>
                 <a class="ml-logout" href="/login">Login</a>
             </NotAuthorized>
         </AuthorizeView>
     </header>
+
+    @if (Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath != "/")
+    {
+        <a href="/" class="ml-home-link">← Home</a>
+    }
 
     <main class="ml-main">
         @Body

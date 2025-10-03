@@ -7,7 +7,6 @@ namespace MoodLift.Infrastructure.Repositories
     public class MoodLiftDbContext : DbContext
     {
         public DbSet<MoodEntry> MoodEntries => Set<MoodEntry>();
-        public DbSet<GratitudeItem> GratitudeItems => Set<GratitudeItem>();
 
         public MoodLiftDbContext(DbContextOptions<MoodLiftDbContext> options) : base(options) { }
 
@@ -27,21 +26,9 @@ namespace MoodLift.Infrastructure.Repositories
                 // Enums are stored as ints by default with SQLite
                 e.Property(x => x.PrimaryEmotion);
                 e.Property(x => x.Symptoms);
-                e.Property(x => x.Movement);
                 e.Property(x => x.CopingStrategies);
-
-                e.HasMany(x => x.Gratitudes)
-                 .WithOne(g => g.MoodEntry)
-                 .HasForeignKey(g => g.MoodEntryId)
-                 .OnDelete(DeleteBehavior.Cascade);
             });
 
-            b.Entity<GratitudeItem>(g =>
-            {
-                g.HasKey(x => x.Id);
-                g.Property(x => x.Text).IsRequired();
-                g.HasIndex(x => new { x.MoodEntryId, x.DisplayOrder }).IsUnique(false);
-            });
         }
 
         public override int SaveChanges()

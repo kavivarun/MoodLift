@@ -17,30 +17,6 @@ namespace MoodLift.Infrastructure.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.9");
 
-            modelBuilder.Entity("MoodLift.Core.Entities.GratitudeItem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("MoodEntryId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Text")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MoodEntryId", "DisplayOrder");
-
-                    b.ToTable("GratitudeItems");
-                });
-
             modelBuilder.Entity("MoodLift.Core.Entities.MoodEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -66,23 +42,8 @@ namespace MoodLift.Infrastructure.Migrations
                     b.Property<int>("MoodScore")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("MoodWord")
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Movement")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("NextActions")
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Notes")
                         .HasMaxLength(4000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("PositiveThing")
-                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("PrimaryEmotion")
@@ -90,10 +51,6 @@ namespace MoodLift.Infrastructure.Migrations
 
                     b.Property<int>("SleepHours")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("StressCause")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
 
                     b.Property<int>("StressScore")
                         .HasColumnType("INTEGER");
@@ -109,22 +66,6 @@ namespace MoodLift.Infrastructure.Migrations
                     b.HasIndex("GoogleUserId", "CreatedAtUtc");
 
                     b.ToTable("MoodEntries");
-                });
-
-            modelBuilder.Entity("MoodLift.Core.Entities.GratitudeItem", b =>
-                {
-                    b.HasOne("MoodLift.Core.Entities.MoodEntry", "MoodEntry")
-                        .WithMany("Gratitudes")
-                        .HasForeignKey("MoodEntryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("MoodEntry");
-                });
-
-            modelBuilder.Entity("MoodLift.Core.Entities.MoodEntry", b =>
-                {
-                    b.Navigation("Gratitudes");
                 });
 #pragma warning restore 612, 618
         }
