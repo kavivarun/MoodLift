@@ -113,7 +113,7 @@ MoodLift is a comprehensive mental health companion built with **Blazor Server**
 
 **Purpose**: Transforms enum values into chart data using lambda expressions for filtering and projection.
 
-### 🗂️ Generics/Generic Collections
+### Generics/Generic Collections
 
 **Location**: `MoodLift.Infrastructure/Repositories/Repository.cs`
 
