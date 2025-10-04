@@ -23,7 +23,7 @@
 
     @if (isLoading)
     {
-        <p>Loading…</p>
+        <MoodLift.Components.Shared.LoadingOverlay IsVisible="true" />
     }
     else if (!entries.Any())
     {
@@ -31,7 +31,6 @@
     }
     else if (view == ViewMode.Dashboard)
     {
-        <!-- ===== DASHBOARD VIEW ===== -->
         <section class="ml-kpis">
             <div class="kpi">
                 <div class="kpi__label">Avg Mood</div>
@@ -48,7 +47,6 @@
         </section>
 
         <section class="ml-charts">
-            <!-- Mood over time (line, datetime X) -->
             <article class="ml-card">
                 <header><h3>Mood over time</h3></header>
                 <ApexChart TItem="PointTime" Title="Mood" Height="220"
@@ -62,7 +60,6 @@
                 </ApexChart>
             </article>
 
-            <!-- Energy & Stress (two lines) -->
             <article class="ml-card">
                 <header><h3>Energy & Stress trend</h3></header>
                 <ApexChart TItem="PointTime" Height="220"
@@ -82,7 +79,6 @@
                 </ApexChart>
             </article>
 
-            <!-- Emotion distribution (donut) -->
             <article class="ml-card">
                 <header><h3>Emotion distribution</h3></header>
                 <ApexChart TItem="CategoryValue" Height="260">
@@ -95,7 +91,6 @@
                 </ApexChart>
             </article>
 
-            <!-- Symptoms (bar) -->
             <article class="ml-card">
                 <header><h3>Symptoms (count)</h3></header>
                 <ApexChart TItem="CategoryValue" Height="260">
@@ -108,7 +103,6 @@
                 </ApexChart>
             </article>
 
-            <!-- Sleep vs Caffeine (scatter) -->
             <article class="ml-card">
                 <header><h3>Sleep vs Caffeine</h3></header>
                 <ApexChart TItem="PointXY" Height="260"
@@ -125,7 +119,6 @@
     }
     else
     {
-        <!-- ===== SUBMISSIONS VIEW ===== -->
         <section class="ml-tablecard">
             <header class="ml-tablecard__head">
                 <h3>All submissions (@paged.TotalCount)</h3>
@@ -265,7 +258,7 @@
         fromLocal = null; toLocal = null; pageIndex = 1; await LoadAsync();
     }
 
-    // tz helpers (Sydney)
+    // tz helpers
     private static readonly string SydneyTzId = "Australia/Sydney";
     private static TimeZoneInfo SydTz => TimeZoneInfo.FindSystemTimeZoneById(SydneyTzId);
     private static DateTime AsLocal(DateTime utc) => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), SydTz);
@@ -281,28 +274,4 @@
         => flags == SymptomFlags.None
             ? "—"
             : string.Join(", ", Enum.GetValues<SymptomFlags>().Where(f => f != SymptomFlags.None && flags.HasFlag(f)));
-
-    // simple in-memory pager
-    public sealed class Paged<T>
-    {
-        public int Page { get; }
-        public int PageSize { get; }
-        public int TotalCount { get; }
-        public int TotalPages => Math.Max(1, (int)Math.Ceiling((double)TotalCount / PageSize));
-        public bool HasPrev => Page > 1;
-        public bool HasNext => Page < TotalPages;
-        public IReadOnlyList<T> PageItems { get; }
-
-        private Paged(IReadOnlyList<T> items, int page, int pageSize, int total)
-        { PageItems = items; Page = page; PageSize = pageSize; TotalCount = total; }
-
-        public static Paged<T> Create(IEnumerable<T> src, int page, int pageSize)
-        {
-            var list = src.ToList();
-            var total = list.Count;
-            var p = Math.Max(1, page);
-            var skip = (p - 1) * pageSize;
-            return new Paged<T>(list.Skip(skip).Take(pageSize).ToList(), p, pageSize, total);
-        }
-    }
 }

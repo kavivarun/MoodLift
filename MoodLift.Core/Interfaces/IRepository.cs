@@ -3,6 +3,10 @@ using System.Linq.Expressions;
 
 namespace MoodLift.Core.Interfaces
 {
+    /// <summary>
+    /// Interface for a generic repository pattern.
+    /// </summary>
+    /// <typeparam name="T">The type of entity, must inherit from AuditableEntity.</typeparam>
     public interface IRepository<T> where T : AuditableEntity
     {
         Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default);

@@ -8,12 +8,9 @@
 @inject SpotifyService SpotifyService
 @rendermode InteractiveServer
 
-<!-- Header -->
 <div class="music-container">
     <h3 class="header-text">Music Recommendations</h3>
 
-
-<!-- Content -->
 @if (errorMessage is not null)
 {
     <p class="text-danger text-center">@errorMessage</p>
@@ -55,7 +52,6 @@ else
                 $"Notes: {e.Notes ?? ""}\n"
             ));
 
-            // Ask AI for search query
             var messages = new List<ChatMessage>
             {
                 new(ChatRole.System, "You are a music coach. Based on the last 10 mood entries, return a single short search phrase that will find uplifting songs on Spotify."),
@@ -70,17 +66,11 @@ else
 
             var query = response.Result?.Query ?? "happy upbeat songs";
 
-            // Fetch up to 8 tracks
             trackIds = await SpotifyService.SearchTracksAsync(query, 8);
         }
         catch (Exception ex)
         {
             errorMessage = $"Failed to load songs: {ex.Message}";
         }
-    }
-
-    public class MusicQueryResponse
-    {
-        public string Query { get; set; } = string.Empty;
     }
 }

@@ -3,6 +3,9 @@ using MoodLift.Core.Models;
 
 namespace MoodLift.Core.Interfaces
 {
+    /// <summary>
+    /// Defines operations for creating and retrieving mood entries within the application.
+    /// </summary>
     public interface IMoodEntryService
     {
         Task<Guid> CreateAsync(MoodEntryDto dto, CancellationToken ct = default);

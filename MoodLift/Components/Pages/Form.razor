@@ -17,7 +17,6 @@
         <EditForm EditContext="_editContext" OnValidSubmit="HandleSubmit" class="ml-form">
             <DataAnnotationsValidator />
 
-            <!-- Header strip -->
             <div class="ml-form-head">
                 <p class="ml-subtitle">Complete step by step</p>
                 <div class="ml-step-indicator">
@@ -25,7 +24,6 @@
                 </div>
             </div>
 
-            <!-- Question Card -->
             <fieldset class="ml-card @( _currentInvalid ? "is-invalid" : null)">
                 <legend class="ml-question">@GetQuestionTitle(_step)</legend>
 
@@ -81,14 +79,14 @@
                     case 4:
                         <div class="ml-field ml-center-field">
                             <InputNumber  @bind-Value="_model.SleepHours" style="
-                text-align:center;
-                font-size:clamp(2rem, 2rem + 1.2vw, 4rem);
-                font-weight:600;
-                height:80px;
-                line-height:80px;
-                border-radius:8px;
-                padding:0 1rem;
-                width:150px;" />
+                                text-align:center;
+                                font-size:clamp(2rem, 2rem + 1.2vw, 4rem);
+                                font-weight:600;
+                                height:80px;
+                                line-height:80px;
+                                border-radius:8px;
+                                padding:0 1rem;
+                                width:150px;" />
                         </div>
                         break;
 
@@ -107,14 +105,14 @@
                     case 6:
                         <div class="ml-field ml-center-field">
                             <InputNumber @bind-Value="_model.CaffeineDrinks" style="
-                        text-align:center;
-                        font-size:clamp(2rem, 2rem + 1.2vw, 4rem);
-                        font-weight:600;
-                        height:80px;
-                        line-height:80px;
-                        border-radius:8px;
-                        padding:0 1rem;
-                        width:150px;" />
+                                text-align:center;
+                                font-size:clamp(2rem, 2rem + 1.2vw, 4rem);
+                                font-weight:600;
+                                height:80px;
+                                line-height:80px;
+                                border-radius:8px;
+                                padding:0 1rem;
+                                width:150px;" />
                         </div>
 
                         break;
@@ -160,7 +158,6 @@
 
             <ValidationSummary class="ml-validation-summary" />
 
-            <!-- Navigation -->
             <div class="ml-actions">
                 <button type="button" class="ml-btn ml-btn--ghost" @onclick="PrevQuestion" disabled="@(_step == 1)">Back</button>
 
@@ -307,29 +304,4 @@
         9 => "Any Notes?",
         _ => ""
     };
-
-    public class MoodFormModel
-    {
-        [Range(0, 10, ErrorMessage = "Mood must be between 0 and 10.")]
-        public int MoodScore { get; set; }
-
-        public PrimaryEmotion PrimaryEmotion { get; set; } = PrimaryEmotion.Calm;
-        public SymptomFlags Symptoms { get; set; } = SymptomFlags.None;
-
-        [Range(0, 24, ErrorMessage = "Sleep must be 0–24 hours.")]
-        public int SleepHours { get; set; }
-
-        [Range(0, 10, ErrorMessage = "Energy must be 0–10.")]
-        public int EnergyLevel { get; set; }
-
-        [Range(0, 10, ErrorMessage = "Caffeine drinks must be 0–10.")]
-        public int CaffeineDrinks { get; set; }
-
-        [Range(0, 10, ErrorMessage = "Stress must be 0–10.")]
-        public int StressScore { get; set; }
-
-        public string? StressCause { get; set; }
-        public CopingStrategyFlags CopingStrategies { get; set; } = CopingStrategyFlags.None;
-        public string? Notes { get; set; }
-    }
 }

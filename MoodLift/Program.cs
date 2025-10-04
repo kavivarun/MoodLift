@@ -1,6 +1,5 @@
 using ApexCharts;
 using Azure.AI.OpenAI;
-using Azure.Identity;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
@@ -11,25 +10,29 @@ using MoodLift.Core.Interfaces;
 using MoodLift.Infrastructure.Repositories;
 using MoodLift.Infrastructure.Services;
 using System.ClientModel;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// DI registrations
+// Register core application services
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, HttpContextCurrentUserService>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IMoodEntryService, MoodEntryService>();
 
-// Add services to the container.
+// Configure SQLite database
 builder.Services.AddDbContext<MoodLiftDbContext>(options =>
     options.UseSqlite(
         builder.Configuration.GetConnectionString("MoodLiftDb") ?? "Data Source=moodlift.db",
         b => b.MigrationsAssembly("MoodLift.Infrastructure")
     ));
 
+// Configure Blazor and authentication
 builder.Services.AddApexCharts();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddCascadingAuthenticationState();
+
+// Set up Google authentication with custom cookie scheme
 builder.Services.AddAuthentication(Constant.Scheme)
     .AddCookie(Constant.Scheme, options =>
     {
@@ -48,7 +51,7 @@ builder.Services.AddAuthentication(Constant.Scheme)
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthorization();
 
-//Open AI
+// Configure Azure OpenAI client for chat features
 builder.Services.AddSingleton<IChatClient>(sp =>
 {
     var endpoint = builder.Configuration["AzureOpenAI:Endpoint"] ?? throw new InvalidOperationException("Missing AzureOpenAI:Endpoint");
@@ -57,19 +60,20 @@ builder.Services.AddSingleton<IChatClient>(sp =>
         .GetChatClient(deployment)
         .AsIChatClient();
 });
-//Spotify
+
+// Initialize Spotify service
 builder.Services.AddSingleton<SpotifyService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configure production environment settings
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
+// Configure middleware pipeline
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

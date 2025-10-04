@@ -12,7 +12,6 @@
     margin: auto;
 }
 
-/* Tiles */
 .tile {
     display: flex;
     align-items: flex-start;
@@ -53,12 +52,10 @@
     text-shadow: -1px -1px 0 var(--brand), 1px -1px 0 var(--brand), -1px 1px 0 var(--brand), 1px 1px 0 var(--brand); /* thin outline */
 }
 
-/* Placement */
 .tile--form {
     grid-area: form;
 }
 
-/* Responsive stacking */
 @media (max-width: 1000px) {
     .ml-grid {
         grid-template-columns: 1fr;
@@ -72,7 +69,6 @@
     }
 }
 
-/* Screen-reader-only heading utility */
 .sr-only {
     position: absolute;
     width: 1px;
@@ -84,8 +80,6 @@
     white-space: nowrap;
     border: 0;
 }
-
-/* Music tile */
 
 .tile--music {
     grid-area: music;
@@ -113,7 +107,6 @@
         background-position: right center;
     }
 
-/* Analytics tile */
 .tile--analytics {
     grid-area: analytics;
     position: relative;
@@ -148,8 +141,6 @@
         background-position: center bottom; 
     }
 
-
-/* Mood Tips tile  */
 .tile--tips {
     grid-area: tips;
     position: relative;
@@ -158,7 +149,7 @@
     background: linear-gradient(135deg, var(--brand) 0%, #fff 160%); 
     z-index: 0;
 }
-    /* Base overlay (no animation by default) */
+
     .tile--tips::before {
         content: "";
         position: absolute;
@@ -172,19 +163,16 @@
         animation: waveReturn 1.5s ease-in-out 1 reverse forwards; 
     }
 
-    /* Hover: play forward once */
     .tile--tips:hover::before {
         animation: waveShift 1.5s ease-in-out 1 forwards;
     }
 
-    /* Hovered tile styling */
     .tile--tips:hover {
         transform: translateY(-2px) scale(1.02);
         filter: brightness(1.2) saturate(1.3);
         box-shadow: 0 14px 28px rgba(0,0,0,.25);
     }
 
-/* forward animation */
 @keyframes waveShift {
     0% {
         background-position: 0 0;
@@ -195,7 +183,6 @@
     }
 }
 
-/* backward animation */
 @keyframes waveReturn {
     100% {
         background-position: 200% 0;
@@ -207,7 +194,6 @@
 }
 
 
-/* Fill Form tile */
 .tile--form {
     grid-area: form;
     position: relative;
@@ -221,7 +207,6 @@
     text-align: center;
 }
 
-    /* Firework burst rays */
     .tile--form::before {
         content: "";
         position: absolute;
@@ -237,12 +222,10 @@
         z-index: 1;
     }
 
-    /* On hover: firework burst */
     .tile--form:hover::before {
         animation: firework-burst 1.5s ease-out forwards;
     }
 
-    /* Text above effect */
     .tile--form > * {
         position: relative;
         z-index: 2;

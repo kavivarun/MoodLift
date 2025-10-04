@@ -14,10 +14,7 @@
 
     @if (loading)
     {
-        <div class="loading-screen">
-            <div class="spinner"></div>
-            <p>Generating your personalized tips...</p>
-        </div>
+        <MoodLift.Components.Shared.LoadingOverlay IsVisible="true" />
     }
     else if (errorMessage is not null)
     {
@@ -98,10 +95,4 @@
         }
     }
 
-    private class TipsResponse
-    {
-        public string Tip1 { get; set; } = string.Empty;
-        public string Tip2 { get; set; } = string.Empty;
-        public string Tip3 { get; set; } = string.Empty;
-    }
 }

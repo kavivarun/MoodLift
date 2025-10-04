@@ -20,18 +20,15 @@
     width:75%;
 }
 
-/* Error message */
 .text-danger {
     font-weight: 500;
     color: #d9534f !important;
 }
 
-/* Song embeds container */
 .d-flex.flex-wrap {
     gap: 20px;
 }
 
-/* Spotify iframes */
 iframe {
     border-radius: 8px;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
@@ -41,7 +38,6 @@ iframe {
         transform: translateY(-6px);
     }
 
-/* "No songs found" text */
 p.text-center {
     font-size: 1.1rem;
     color: #666;
