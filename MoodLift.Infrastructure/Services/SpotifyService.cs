@@ -12,6 +12,8 @@ namespace MoodLift.Infrastructure.Services
     /// </summary>
     public class SpotifyService
     {
+        private const int MaxLimit = 50;
+
         private readonly IHttpClientFactory _httpFactory;
         private readonly IConfiguration _config;
 
@@ -34,8 +36,14 @@ namespace MoodLift.Infrastructure.Services
         {
             var http = _httpFactory.CreateClient();
             var tokenUrl = "https://accounts.spotify.com/api/token";
-            var clientId = _config["Spotify:ClientId"]!;
-            var clientSecret = _config["Spotify:ClientSecret"]!;
+            var clientId = _config["Spotify:ClientId"];
+            var clientSecret = _config["Spotify:ClientSecret"];
+
+            if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
+            {
+                throw new InvalidOperationException("Spotify credentials are missing. Add Spotify:ClientId and Spotify:ClientSecret to configuration.");
+            }
+
             var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}"));
 
             var request = new HttpRequestMessage(HttpMethod.Post, tokenUrl);
@@ -45,12 +53,27 @@ namespace MoodLift.Infrastructure.Services
                 new KeyValuePair<string, string>("grant_type", "client_credentials")
             });
 
-            var response = await http.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-
+            using var response = await http.SendAsync(request);
             var json = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Spotify authentication failed ({(int)response.StatusCode}): {GetSpotifyErrorMessage(json)}");
+            }
+
             using var doc = JsonDocument.Parse(json);
-            return doc.RootElement.GetProperty("access_token").GetString()!;
+            if (!doc.RootElement.TryGetProperty("access_token", out var tokenElement))
+            {
+                throw new InvalidOperationException("Spotify authentication response did not include an access token.");
+            }
+
+            var token = tokenElement.GetString();
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                throw new InvalidOperationException("Spotify authentication response included an empty access token.");
+            }
+
+            return token;
         }
 
         /// <summary>
@@ -65,24 +88,81 @@ namespace MoodLift.Infrastructure.Services
         /// </remarks>
         public async Task<List<string>> SearchTracksAsync(string query, int limit = 8)
         {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                query = "happy upbeat songs";
+            }
+
+            limit = Math.Clamp(limit, 1, MaxLimit);
+
             var token = await GetAccessTokenAsync();
             var http = _httpFactory.CreateClient();
 
-            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var request = new HttpRequestMessage(HttpMethod.Get, BuildSearchUrl(query, limit));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            var url = $"https://api.spotify.com/v1/search?q={Uri.EscapeDataString(query)}&type=track&limit={limit}";
-            var response = await http.GetStringAsync(url);
+            using var response = await http.SendAsync(request);
+            var json = await response.Content.ReadAsStringAsync();
 
-            using var doc = JsonDocument.Parse(response);
-            var items = doc.RootElement
-                .GetProperty("tracks")
-                .GetProperty("items")
-                .EnumerateArray();
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Spotify track search failed ({(int)response.StatusCode}): {GetSpotifyErrorMessage(json)}");
+            }
 
-            return items
-                .Select(track => track.GetProperty("id").GetString()!)
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("tracks", out var tracksElement) ||
+                !tracksElement.TryGetProperty("items", out var itemsElement) ||
+                itemsElement.ValueKind != JsonValueKind.Array)
+            {
+                return new List<string>();
+            }
+
+            return itemsElement
+                .EnumerateArray()
+                .Where(track => track.TryGetProperty("id", out _))
+                .Select(track => track.GetProperty("id").GetString())
                 .Where(id => !string.IsNullOrEmpty(id))
+                .Cast<string>()
                 .ToList();
+        }
+
+        private static string BuildSearchUrl(string query, int limit)
+        {
+            return $"https://api.spotify.com/v1/search?q={Uri.EscapeDataString(query)}&type=track&limit={limit}";
+        }
+
+        private static string GetSpotifyErrorMessage(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return "No response body returned.";
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("error_description", out var description))
+                {
+                    return description.GetString() ?? json;
+                }
+
+                if (doc.RootElement.TryGetProperty("error", out var error))
+                {
+                    if (error.ValueKind == JsonValueKind.Object &&
+                        error.TryGetProperty("message", out var message))
+                    {
+                        return message.GetString() ?? json;
+                    }
+
+                    return error.GetString() ?? json;
+                }
+            }
+            catch (JsonException)
+            {
+                return json;
+            }
+
+            return json;
         }
     }
 }

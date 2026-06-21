@@ -14,6 +14,7 @@ using System.ClientModel;
 var builder = WebApplication.CreateBuilder(args);
 
 // Register core application services
+builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, HttpContextCurrentUserService>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
