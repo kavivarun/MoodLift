@@ -1,21 +1,35 @@
-﻿@page "/login"
+@page "/login"
 @layout LoginLayout
+@inject IConfiguration Configuration
+
 <div class="login-container">
     <div class="login-card shadow-lg">
-        <h2 class="text-center mb-4 header-text">Welcome to MoodLift 🎵</h2>
-        <p class="text-center text-muted">Sign in to track your moods and get personalized music suggestions</p>
+        <p class="eyebrow">Workplace wellbeing demo</p>
+        <h2 class="text-center mb-3 header-text">Welcome to MoodLift</h2>
+        <p class="text-center text-muted">Track mental health signals, generate AI tips, and save mood-based Spotify recovery playlists.</p>
 
-        <form action="/authentication/google-signin" method="post" class="mt-4">
+        @if (HasGoogleAuth)
+        {
+            <form action="/authentication/google-signin" method="post" class="mt-4">
+                <AntiforgeryToken />
+                <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+                <button class="btn btn-google w-100" type="submit">
+                    Sign in with Google
+                </button>
+            </form>
+        }
+
+        <form action="/authentication/demo-signin" method="post" class="mt-3">
             <AntiforgeryToken />
             <input type="hidden" name="returnUrl" value="@ReturnUrl" />
-
-            <button class="btn btn-google w-100" type="submit">
-                <i class="bi bi-google me-2"></i> Sign in with Google
+            <button class="btn btn-demo w-100" type="submit">
+                Launch demo workspace
             </button>
         </form>
 
         <div class="mt-4 text-center small text-muted">
-            By signing in, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
+            Demo mode keeps data local and uses the same MoodLift dashboard flow.
         </div>
     </div>
 </div>
@@ -23,4 +37,8 @@
 @code {
     [SupplyParameterFromQuery]
     public string ReturnUrl { get; set; } = "/";
+
+    private bool HasGoogleAuth =>
+        !string.IsNullOrWhiteSpace(Configuration["Google:ClientId"])
+        && !string.IsNullOrWhiteSpace(Configuration["Google:ClientSecret"]);
 }

@@ -1,11 +1,21 @@
-﻿@if (IsVisible)
+@if (IsVisible)
 {
     <div class="loading-overlay">
-        <div class="spinner"></div>
-        <p>Loading...</p>
+        <div class="loading-card" role="status" aria-live="polite">
+            <div class="pulse-ring">
+                <span></span>
+            </div>
+            <p class="loading-title">@Message</p>
+            @if (!string.IsNullOrWhiteSpace(Detail))
+            {
+                <p class="loading-detail">@Detail</p>
+            }
+        </div>
     </div>
 }
 
 @code {
     [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string Message { get; set; } = "Preparing MoodLift";
+    [Parameter] public string? Detail { get; set; }
 }

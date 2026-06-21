@@ -19,6 +19,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, HttpContextCurrentUserService>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IMoodEntryService, MoodEntryService>();
+builder.Services.AddScoped<ISavedPlaylistService, SavedPlaylistService>();
 
 // Configure SQLite database
 builder.Services.AddDbContext<MoodLiftDbContext>(options =>
@@ -33,39 +34,59 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddCascadingAuthenticationState();
 
-// Set up Google authentication with custom cookie scheme
-builder.Services.AddAuthentication(Constant.Scheme)
+// Set up authentication with custom cookie scheme
+var googleClientId = builder.Configuration["Google:ClientId"];
+var googleClientSecret = builder.Configuration["Google:ClientSecret"];
+var hasGoogleAuth = !string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(googleClientSecret);
+
+var authBuilder = builder.Services.AddAuthentication(Constant.Scheme)
     .AddCookie(Constant.Scheme, options =>
     {
         options.Cookie.Name = Constant.Scheme;
         options.ExpireTimeSpan = TimeSpan.FromHours(12);
         options.LoginPath = "/login";
-    })
-    .AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
+    });
+
+if (hasGoogleAuth)
+{
+    authBuilder.AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
     {
-        options.ClientId = builder.Configuration["Google:ClientId"]!;
-        options.ClientSecret = builder.Configuration["Google:ClientSecret"]!;
+        options.ClientId = googleClientId!;
+        options.ClientSecret = googleClientSecret!;
         options.SignInScheme = Constant.Scheme;
         options.Scope.Add("profile");
         options.ClaimActions.MapJsonKey("picture", "picture", "url");
     });
+}
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthorization();
 
-// Configure Azure OpenAI client for chat features
-builder.Services.AddSingleton<IChatClient>(sp =>
+// Configure Azure OpenAI client for chat features when credentials are available.
+var azureEndpoint = builder.Configuration["AzureOpenAI:Endpoint"];
+var azureApiKey = builder.Configuration["AzureOpenAI:ApiKey"];
+var hasAzureOpenAi = !string.IsNullOrWhiteSpace(azureEndpoint) && !string.IsNullOrWhiteSpace(azureApiKey);
+
+if (hasAzureOpenAi)
 {
-    var endpoint = builder.Configuration["AzureOpenAI:Endpoint"] ?? throw new InvalidOperationException("Missing AzureOpenAI:Endpoint");
-    var deployment = builder.Configuration["AzureOpenAI:Deployment"] ?? "gpt-4.1";
-    return new AzureOpenAIClient(new Uri(endpoint), new ApiKeyCredential(builder.Configuration["AzureOpenAI:ApiKey"]!) )
-        .GetChatClient(deployment)
-        .AsIChatClient();
-});
+    builder.Services.AddSingleton<IChatClient>(sp =>
+    {
+        var deployment = builder.Configuration["AzureOpenAI:Deployment"] ?? "gpt-4.1";
+        return new AzureOpenAIClient(new Uri(azureEndpoint!), new ApiKeyCredential(azureApiKey!))
+            .GetChatClient(deployment)
+            .AsIChatClient();
+    });
+}
 
 // Initialize Spotify service
 builder.Services.AddSingleton<SpotifyService>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<MoodLiftDbContext>();
+    db.Database.Migrate();
+}
 
 // Configure production environment settings
 if (!app.Environment.IsDevelopment())

@@ -14,6 +14,8 @@ namespace MoodLift.Infrastructure.Repositories
         /// </summary>
         public DbSet<MoodEntry> MoodEntries => Set<MoodEntry>();
 
+        public DbSet<SavedPlaylist> SavedPlaylists => Set<SavedPlaylist>();
+
         /// <summary>
         /// Initializes a new instance of the MoodLiftDbContext class.
         /// </summary>
@@ -40,6 +42,21 @@ namespace MoodLift.Infrastructure.Repositories
                 e.Property(x => x.PrimaryEmotion);
                 e.Property(x => x.Symptoms);
                 e.Property(x => x.CopingStrategies);
+            });
+
+            b.Entity<SavedPlaylist>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.GoogleUserId).IsRequired();
+                e.Property(x => x.CreatedAtUtc).IsRequired();
+                e.Property(x => x.UpdatedAtUtc).IsRequired();
+                e.Property(x => x.Name).HasMaxLength(120).IsRequired();
+                e.Property(x => x.SearchQuery).HasMaxLength(120).IsRequired();
+                e.Property(x => x.Reason).HasMaxLength(600);
+                e.Property(x => x.WorkplaceUse).HasMaxLength(120);
+                e.Property(x => x.TrackIdsJson).IsRequired();
+
+                e.HasIndex(x => new { x.GoogleUserId, x.CreatedAtUtc });
             });
         }
 

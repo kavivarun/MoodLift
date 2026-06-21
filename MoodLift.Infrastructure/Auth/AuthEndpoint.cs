@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MoodLift.Auth
 {
@@ -56,12 +58,26 @@ namespace MoodLift.Auth
                 async (HttpContext context, [FromForm] string returnUrl) =>
                 {
                     ReturnUrl = returnUrl;
+                    if (!HasGoogleAuth(context.RequestServices.GetRequiredService<IConfiguration>()))
+                    {
+                        await SignInDemoUserAsync(context);
+                        context.Response.Redirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
+                        return;
+                    }
+
                     var authProp = new AuthenticationProperties
                     {
                         RedirectUri = "authentication/success"
                     };
                     var result = TypedResults.Challenge(authProp, [GoogleDefaults.AuthenticationScheme]);
                     await result.ExecuteAsync(context);
+                });
+
+            accountGroup.MapPost("demo-signin",
+                async (HttpContext context, [FromForm] string returnUrl) =>
+                {
+                    await SignInDemoUserAsync(context);
+                    return Results.LocalRedirect($"~{(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl)}");
                 });
 
             // Authentication success callback handler
@@ -77,8 +93,8 @@ namespace MoodLift.Auth
                         return Results.Unauthorized();
 
                     // Extract user claims from Google authentication
-                    var email = context.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Email)!.Value;
-                    var name = context.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Name)!.Value;
+                    var email = context.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Email)?.Value ?? "demo@moodlift.local";
+                    var name = context.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value ?? "MoodLift Demo";
                     var googleId = context.User.Claims.FirstOrDefault(x => x.Type == "sub")?.Value
                         ?? context.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier)?.Value;
                     var picture = context.User.Claims.FirstOrDefault(x => x.Type == "picture")?.Value;
@@ -115,6 +131,24 @@ namespace MoodLift.Auth
                 });
 
             return accountGroup;
+        }
+
+        private static bool HasGoogleAuth(IConfiguration config)
+            => !string.IsNullOrWhiteSpace(config["Google:ClientId"])
+               && !string.IsNullOrWhiteSpace(config["Google:ClientSecret"]);
+
+        private static async Task SignInDemoUserAsync(HttpContext context)
+        {
+            Claim[] claims = [
+                new(ClaimTypes.Name, "MoodLift Demo"),
+                new(ClaimTypes.Email, "demo@moodlift.local"),
+                new(ClaimTypes.NameIdentifier, "demo-workplace-user"),
+                new("picture", "")
+            ];
+
+            var identity = new ClaimsIdentity(claims, Constant.Scheme);
+            var principal = new ClaimsPrincipal(identity);
+            await context.SignInAsync(principal);
         }
     }
 }

@@ -1,76 +1,310 @@
-﻿@page "/music"
+@page "/music"
+@attribute [Authorize]
 @inject IMoodEntryService MoodEntryService
+@inject ISavedPlaylistService SavedPlaylistService
 @using MoodLift.Core.Entities
 @using MoodLift.Core.Interfaces
 @using MoodLift.Infrastructure.Services
 @using Microsoft.Extensions.AI
-@inject IChatClient ChatClient
+@using Microsoft.Extensions.DependencyInjection
+@using System.Text.Json
+@inject IServiceProvider Services
 @inject SpotifyService SpotifyService
 @rendermode InteractiveServer
 
-<div class="music-container">
-    <h3 class="header-text">Music Recommendations</h3>
+<div class="music-workspace">
+    <header class="music-hero">
+        <div>
+            <p class="eyebrow">AI + Spotify recovery room</p>
+            <h1>Turn today's check-ins into a playlist your team can actually use.</h1>
+            <p class="hero-copy">MoodLift reads recent wellbeing signals, finds Spotify tracks, and lets employees save private reset playlists for focus, calm, or energy.</p>
+        </div>
+        <div class="hero-stats" aria-label="Playlist summary">
+            <div>
+                <span>@(trackIds?.Count ?? 0)</span>
+                <small>tracks found</small>
+            </div>
+            <div>
+                <span>@savedPlaylists.Count</span>
+                <small>saved resets</small>
+            </div>
+        </div>
+    </header>
 
-@if (errorMessage is not null)
-{
-    <p class="text-danger text-center">@errorMessage</p>
-}
-else if (trackIds?.Any() == true)
-{
-    <div class="songs-container">
-        @foreach (var id in trackIds.Take(8)) 
+    @if (loading)
+    {
+        <MoodLift.Components.Shared.LoadingOverlay IsVisible="true"
+                                                   Message="Building your recovery playlist"
+                                                   Detail="Reading mood trends, asking AI for a search strategy, then finding tracks on Spotify." />
+    }
+    else if (errorMessage is not null)
+    {
+        <div class="music-alert">@errorMessage</div>
+    }
+    else if (trackIds?.Any() == true)
+    {
+        <section class="playlist-panel">
+            <div class="playlist-copy">
+                <p class="eyebrow">@CurrentWorkplaceUse</p>
+                <h2>@CurrentPlaylistName</h2>
+                <p>@CurrentReason</p>
+                <div class="query-pill">@CurrentQuery</div>
+            </div>
+            <div class="playlist-actions">
+                <button class="ml-btn ml-btn--primary" @onclick="SaveCurrentPlaylist" disabled="@saving">
+                    @(saving ? "Saving..." : "Save playlist")
+                </button>
+                <button class="ml-btn ml-btn--ghost" @onclick="RegeneratePlaylist" disabled="@loading">Regenerate</button>
+            </div>
+        </section>
+
+        @if (!string.IsNullOrWhiteSpace(statusMessage))
         {
-            <iframe src=@($"https://open.spotify.com/embed/track/{id}")
-                    width="300" height="380" frameborder="0"
-                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                    loading="lazy"></iframe>
+            <p class="music-status">@statusMessage</p>
         }
-    </div>
-}
-else
-{
-		<MoodLift.Components.Shared.LoadingOverlay IsVisible="true" />
-}
+
+        <div class="songs-container">
+            @foreach (var id in trackIds.Take(8))
+            {
+                <iframe src=@($"https://open.spotify.com/embed/track/{id}")
+                        width="300" height="380" frameborder="0"
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"></iframe>
+            }
+        </div>
+    }
+
+    <section class="saved-playlists">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Private employee library</p>
+                <h2>Saved playlists</h2>
+            </div>
+        </div>
+
+        @if (savedPlaylists.Any())
+        {
+            <div class="saved-grid">
+                @foreach (var playlist in savedPlaylists)
+                {
+                    var ids = GetTrackIds(playlist);
+                    <article class="saved-card">
+                        <div class="saved-card__top">
+                            <div>
+                                <p class="eyebrow">@playlist.WorkplaceUse</p>
+                                <h3>@playlist.Name</h3>
+                            </div>
+                            <button class="icon-btn" title="Delete saved playlist" @onclick="() => DeletePlaylist(playlist.Id)">x</button>
+                        </div>
+                        <p>@playlist.Reason</p>
+                        <div class="query-pill">@playlist.SearchQuery</div>
+                        @if (ids.FirstOrDefault() is string firstTrack)
+                        {
+                            <iframe src=@($"https://open.spotify.com/embed/track/{firstTrack}")
+                                    width="100%" height="152" frameborder="0"
+                                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                                    loading="lazy"></iframe>
+                        }
+                    </article>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">No saved playlists yet. Generate one above and save it for your demo.</div>
+        }
+    </section>
 </div>
 
 @code {
     private List<string>? trackIds;
+    private List<SavedPlaylist> savedPlaylists = new();
+    private MusicQueryResponse? playlistIdea;
+    private bool loading = true;
+    private bool saving;
     private string? errorMessage;
+    private string? statusMessage;
+
+    private string CurrentQuery => string.IsNullOrWhiteSpace(playlistIdea?.Query) ? "happy upbeat songs" : playlistIdea.Query;
+    private string CurrentPlaylistName => string.IsNullOrWhiteSpace(playlistIdea?.PlaylistName) ? "MoodLift Reset Mix" : playlistIdea.PlaylistName;
+    private string CurrentReason => string.IsNullOrWhiteSpace(playlistIdea?.Reason) ? "Built from your recent check-ins to support a healthier workday." : playlistIdea.Reason;
+    private string CurrentWorkplaceUse => string.IsNullOrWhiteSpace(playlistIdea?.WorkplaceUse) ? "Personal reset" : playlistIdea.WorkplaceUse;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadSavedPlaylists();
+        await GeneratePlaylist();
+    }
+
+    private async Task GeneratePlaylist()
+    {
         try
         {
+            loading = true;
+            errorMessage = null;
+            statusMessage = null;
+
             var recentEntries = await MoodEntryService.GetRecentAsync(10);
 
-            string context = string.Join("\n\n", recentEntries.Select(e =>
-                $"Date: {e.CreatedAtUtc:g}\n" +
-                $"Mood Score: {e.MoodScore}, Energy: {e.EnergyLevel}, Stress: {e.StressScore}\n" +
-                $"Emotion: {e.PrimaryEmotion}\n" +
-                $"Symptoms: {e.Symptoms}, Sleep: {e.SleepHours}, Caffeine: {e.CaffeineDrinks},\n" +
-                $"Coping Strategies: {e.CopingStrategies},\n" +
-                $"Notes: {e.Notes ?? ""}\n"
-            ));
+            string context = recentEntries.Any()
+                ? string.Join("\n\n", recentEntries.Select(e =>
+                    $"Date: {e.CreatedAtUtc:g}\n" +
+                    $"Mood Score: {e.MoodScore}, Energy: {e.EnergyLevel}, Stress: {e.StressScore}\n" +
+                    $"Emotion: {e.PrimaryEmotion}\n" +
+                    $"Symptoms: {e.Symptoms}, Sleep: {e.SleepHours}, Caffeine: {e.CaffeineDrinks},\n" +
+                    $"Coping Strategies: {e.CopingStrategies},\n" +
+                    $"Notes: {e.Notes ?? ""}\n"))
+                : "No mood entries yet. Create a general workplace playlist for a short afternoon reset.";
 
-            var messages = new List<ChatMessage>
+            var chatClient = Services.GetService<IChatClient>();
+            if (chatClient is null)
             {
-                new(ChatRole.System, "You are a music coach. Based on the last 10 mood entries, return a single short search phrase that will find uplifting songs on Spotify."),
-                new(ChatRole.User, context)
-            };
+                playlistIdea = BuildDemoPlaylistIdea(recentEntries);
+            }
+            else
+            {
+                var messages = new List<ChatMessage>
+                {
+                    new(ChatRole.System, "You are a workplace wellbeing music coach. Based on recent mood entries, return a short Spotify search query plus a playlist name, a short reason, and a workplace use such as Focus sprint, Calm reset, Energy lift, or Decompression."),
+                    new(ChatRole.User, context)
+                };
 
-            var response = await ChatClient.GetResponseAsync<MusicQueryResponse>(
-                messages,
-                options: null,
-                useJsonSchemaResponseFormat: true
-            );
+                var response = await chatClient.GetResponseAsync<MusicQueryResponse>(
+                    messages,
+                    options: null,
+                    useJsonSchemaResponseFormat: true
+                );
 
-            var query = response.Result?.Query ?? "happy upbeat songs";
+                playlistIdea = response.Result ?? BuildDemoPlaylistIdea(recentEntries);
+            }
 
-            trackIds = await SpotifyService.SearchTracksAsync(query, 8);
+            try
+            {
+                trackIds = await SpotifyService.SearchTracksAsync(CurrentQuery, 8);
+            }
+            catch
+            {
+                trackIds = GetDemoTrackIds();
+                statusMessage = "Spotify credentials were not available, so MoodLift loaded a demo playlist for the localhost presentation.";
+            }
         }
         catch (Exception ex)
         {
             errorMessage = $"Failed to load songs: {ex.Message}";
         }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task RegeneratePlaylist() => await GeneratePlaylist();
+
+    private async Task SaveCurrentPlaylist()
+    {
+        if (trackIds is null || !trackIds.Any())
+        {
+            return;
+        }
+
+        saving = true;
+        statusMessage = null;
+
+        try
+        {
+            await SavedPlaylistService.SaveAsync(CurrentPlaylistName, CurrentQuery, CurrentReason, CurrentWorkplaceUse, trackIds);
+            await LoadSavedPlaylists();
+            statusMessage = "Playlist saved to this employee's private MoodLift library.";
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Could not save playlist: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private async Task LoadSavedPlaylists()
+    {
+        savedPlaylists = await SavedPlaylistService.GetRecentAsync(6);
+    }
+
+    private async Task DeletePlaylist(Guid id)
+    {
+        await SavedPlaylistService.DeleteAsync(id);
+        await LoadSavedPlaylists();
+    }
+
+    private static List<string> GetTrackIds(SavedPlaylist playlist)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(playlist.TrackIdsJson) ?? new List<string>();
+        }
+        catch (JsonException)
+        {
+            return new List<string>();
+        }
+    }
+
+    private static List<string> GetDemoTrackIds() => new()
+    {
+        "0VjIjW4GlUZAMYd2vXMi3b",
+        "1mea3bSkSGXuIRvnydlB5b",
+        "4cOdK2wGLETKBW3PvgPWqT",
+        "5ChkMS8OtdzJeqyybCc9R5",
+        "3n3Ppam7vgaVa1iaRUc9Lp",
+        "6DCZcSspjsKoFjzjrWoCdn",
+        "7ouMYWpwJ422jRcDASZB7P",
+        "11dFghVXANMlKmJXsNCbNl"
+    };
+
+    private static MusicQueryResponse BuildDemoPlaylistIdea(List<MoodEntry> entries)
+    {
+        if (!entries.Any())
+        {
+            return new MusicQueryResponse
+            {
+                PlaylistName = "Afternoon Reset Mix",
+                Query = "calm upbeat focus songs",
+                Reason = "A ready-to-demo playlist for employees who need a short reset between meetings.",
+                WorkplaceUse = "Calm reset"
+            };
+        }
+
+        var avgStress = entries.Average(e => e.StressScore);
+        var avgEnergy = entries.Average(e => e.EnergyLevel);
+
+        if (avgStress >= 7)
+        {
+            return new MusicQueryResponse
+            {
+                PlaylistName = "Pressure Release",
+                Query = "calm acoustic focus songs",
+                Reason = "Recent check-ins show elevated stress, so this playlist leans calm and steady for decompression.",
+                WorkplaceUse = "Decompression"
+            };
+        }
+
+        if (avgEnergy <= 4)
+        {
+            return new MusicQueryResponse
+            {
+                PlaylistName = "Energy Lift",
+                Query = "upbeat work motivation songs",
+                Reason = "Recent check-ins show lower energy, so this playlist aims to lift momentum without feeling chaotic.",
+                WorkplaceUse = "Energy lift"
+            };
+        }
+
+        return new MusicQueryResponse
+        {
+            PlaylistName = "Focus Sprint",
+            Query = "feel good focus pop songs",
+            Reason = "Recent check-ins look stable, so this playlist supports a productive work block.",
+            WorkplaceUse = "Focus sprint"
+        };
     }
 }

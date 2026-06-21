@@ -2,8 +2,9 @@
 @using MoodLift.Core.Entities
 @using MoodLift.Core.Interfaces
 @using Microsoft.Extensions.AI
+@using Microsoft.Extensions.DependencyInjection
 @inject IMoodEntryService MoodEntryService
-@inject IChatClient ChatClient
+@inject IServiceProvider Services
 @rendermode InteractiveServer
 @attribute [Authorize]
 
@@ -66,19 +67,27 @@
                 $"Notes: {e.Notes ?? ""}\n"
             ));
 
-            var messages = new List<ChatMessage>
+            var chatClient = Services.GetService<IChatClient>();
+            if (chatClient is null)
             {
-                new(ChatRole.System, "You are a helpful wellness coach. Based on the last 10 user mood entries, return exactly 3 short, actionable tips."),
-                new(ChatRole.User, context)
-            };
+                tips = BuildDemoTips(recentEntries);
+            }
+            else
+            {
+                var messages = new List<ChatMessage>
+                {
+                    new(ChatRole.System, "You are a helpful wellness coach. Based on the last 10 user mood entries, return exactly 3 short, actionable tips."),
+                    new(ChatRole.User, context)
+                };
 
-            ChatResponse<TipsResponse> response = await ChatClient.GetResponseAsync<TipsResponse>(
-                messages,
-                options: null,
-                useJsonSchemaResponseFormat: true
-            );
+                ChatResponse<TipsResponse> response = await chatClient.GetResponseAsync<TipsResponse>(
+                    messages,
+                    options: null,
+                    useJsonSchemaResponseFormat: true
+                );
 
-            tips = response.Result;
+                tips = response.Result;
+            }
 
             if (tips is null)
             {
@@ -95,4 +104,14 @@
         }
     }
 
+    private static TipsResponse BuildDemoTips(List<MoodEntry> entries)
+    {
+        var avgStress = entries.Any() ? entries.Average(e => e.StressScore) : 5;
+        return new TipsResponse
+        {
+            Tip1 = avgStress >= 7 ? "Block a 10-minute decompression break after the next meeting." : "Use a short check-in before deep work to notice your energy level.",
+            Tip2 = "Choose one coping strategy today and record whether it helped.",
+            Tip3 = "Use the music page to generate a reset playlist for focus, calm, or energy."
+        };
+    }
 }

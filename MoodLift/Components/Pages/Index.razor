@@ -1,19 +1,136 @@
-﻿@page "/"
+@page "/"
 @attribute [Authorize]
+@rendermode InteractiveServer
 
-<h1 class="sr-only">MoodLift Dashboard</h1>
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using MoodLift.Core.Entities
+@inject AuthenticationStateProvider Auth
+@inject MoodLift.Infrastructure.Repositories.MoodLiftDbContext Db
 
-<div class="ml-grid">
-    <a class="tile tile--form" href="/form">
-        <div class="tile__text">Track Your Mood</div>
-    </a>
-    <a class="tile tile--tips" href="/tips">
-        <div class="tile__text">Mood Tips</div>
-    </a>
-    <a class="tile tile--analytics" href="/analytics">
-        <div class="tile__text">View Analytics</div>
-    </a>
-    <a class="tile tile--music" href="/music">
-        <div class="tile__text">Listen to Music</div>
-    </a>
+<PageTitle>MoodLift Workplace Cockpit</PageTitle>
+
+<div class="workplace-dashboard">
+    <header class="dashboard-hero">
+        <div class="hero-copy">
+            <p class="eyebrow">Competition demo</p>
+            <h1>Privacy-safe workplace wellbeing, backed by mood data, AI tips, and Spotify recovery playlists.</h1>
+            <p>MoodLift gives employees private support while giving workplaces an anonymous signal on stress, energy, and burnout risk.</p>
+            <div class="hero-actions">
+                <a class="dash-btn dash-btn--primary" href="/form">Run check-in</a>
+                <a class="dash-btn dash-btn--secondary" href="/music">Generate playlist</a>
+            </div>
+        </div>
+        <aside class="risk-card">
+            <span class="risk-label">Workplace pulse</span>
+            <strong>@RiskLevel</strong>
+            <p>@RiskMessage</p>
+        </aside>
+    </header>
+
+    @if (loading)
+    {
+        <MoodLift.Components.Shared.LoadingOverlay IsVisible="true"
+                                                   Message="Preparing workplace cockpit"
+                                                   Detail="Loading recent wellbeing signals for the demo dashboard." />
+    }
+    else
+    {
+        <section class="metric-grid" aria-label="Wellbeing metrics">
+            <article class="metric-card">
+                <span>Average mood</span>
+                <strong>@FormatMetric(AvgMood)</strong>
+                <small>Last 30 days</small>
+            </article>
+            <article class="metric-card">
+                <span>Average stress</span>
+                <strong>@FormatMetric(AvgStress)</strong>
+                <small>Lower is better</small>
+            </article>
+            <article class="metric-card">
+                <span>Average energy</span>
+                <strong>@FormatMetric(AvgEnergy)</strong>
+                <small>Employee recovery signal</small>
+            </article>
+            <article class="metric-card">
+                <span>Privacy status</span>
+                <strong>@PrivacyStatus</strong>
+                <small>@entries.Count check-ins in sample</small>
+            </article>
+        </section>
+
+        <section class="demo-grid">
+            <a class="demo-card demo-card--form" href="/form">
+                <span>01</span>
+                <h2>30-second employee check-in</h2>
+                <p>Capture mood, stress, sleep, symptoms, energy, and coping strategies.</p>
+            </a>
+            <a class="demo-card demo-card--analytics" href="/analytics">
+                <span>02</span>
+                <h2>Anonymous wellbeing analytics</h2>
+                <p>Show the office story with charts, trends, and submission history.</p>
+            </a>
+            <a class="demo-card demo-card--tips" href="/tips">
+                <span>03</span>
+                <h2>AI wellness coach</h2>
+                <p>Generate practical tips from recent employee wellbeing patterns.</p>
+            </a>
+            <a class="demo-card demo-card--music" href="/music">
+                <span>04</span>
+                <h2>Saved Spotify reset playlists</h2>
+                <p>Create and save mood-based playlists for focus, calm, and decompression.</p>
+            </a>
+        </section>
+    }
 </div>
+
+@code {
+    private bool loading = true;
+    private List<MoodEntry> entries = new();
+
+    private double AvgMood => entries.Any() ? entries.Average(e => e.MoodScore) : 0;
+    private double AvgStress => entries.Any() ? entries.Average(e => e.StressScore) : 0;
+    private double AvgEnergy => entries.Any() ? entries.Average(e => e.EnergyLevel) : 0;
+
+    private string RiskLevel => entries.Count == 0
+        ? "Ready"
+        : AvgStress >= 7 || AvgMood <= 4
+            ? "Elevated"
+            : AvgStress >= 5 || AvgEnergy <= 4
+                ? "Watch"
+                : "Healthy";
+
+    private string RiskMessage => RiskLevel switch
+    {
+        "Elevated" => "Stress is trending high. Demo a manager action: reduce meeting load and encourage recovery breaks.",
+        "Watch" => "Some recovery signals need attention. MoodLift can suggest team rituals before burnout rises.",
+        "Healthy" => "Current signals look stable. Keep check-ins running to catch changes early.",
+        _ => "Add a few check-ins to show the live workplace pulse."
+    };
+
+    private string PrivacyStatus => entries.Count >= 5 ? "Protected" : "Warming up";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await Auth.GetAuthenticationStateAsync();
+        var googleId = GetGoogleId(auth.User);
+        var since = DateTime.UtcNow.AddDays(-30);
+
+        entries = await Db.MoodEntries
+            .AsNoTracking()
+            .Where(x => x.GoogleUserId == googleId && x.CreatedAtUtc >= since)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ToListAsync();
+
+        loading = false;
+    }
+
+    private static string FormatMetric(double value) => value <= 0 ? "--" : $"{value:F1}";
+
+    private static string GetGoogleId(ClaimsPrincipal user)
+        => user.FindFirst("sub")?.Value
+           ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+           ?? user.FindFirst("googleid")?.Value
+           ?? string.Empty;
+}
